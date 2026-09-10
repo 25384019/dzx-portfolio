@@ -52,11 +52,7 @@ export class ScenePortal {
   // Raycasting (Zero hot-loop allocations)
   private raycaster: THREE.Raycaster = new THREE.Raycaster();
   private tempProjVec: THREE.Vector3 = new THREE.Vector3();
-  private tempWorldPos: THREE.Vector3 = new THREE.Vector3();
-  private tempRayDir: THREE.Vector3 = new THREE.Vector3();
-  private occlusionRaycaster: THREE.Raycaster = new THREE.Raycaster();
   private allIntersections: THREE.Intersection[] = [];
-  private occlusionIntersections: THREE.Intersection[] = [];
   private readonly portalCenter: THREE.Vector3 = new THREE.Vector3(0.5, 2.2, -14.0);
 
   // DOM Descriptor Element direct imperative ref
@@ -279,52 +275,7 @@ export class ScenePortal {
       }
     }
 
-    // Screen proximity fallback if raycast missed, but NOT if Core was directly hit
-    if (!hitNode && !coreHit && this.isInPortal) {
-      const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.innerWidth < 768;
-      const fallbackRadius = isMobile ? 32 : 20; // 18~22px desktop fallback, 32px mobile
-      const width = window.innerWidth;
-      const height = window.innerHeight;
-
-      let minDistance = Infinity;
-      let candidateNode: MemoryNode | null = null;
-
-      for (const node of nodes) {
-        node.mesh.getWorldPosition(this.tempProjVec);
-        this.tempProjVec.project(this.camera);
-        if (this.tempProjVec.z < 1) {
-          const sx = (this.tempProjVec.x * 0.5 + 0.5) * width;
-          const sy = (-this.tempProjVec.y * 0.5 + 0.5) * height;
-          const dist = Math.hypot(this.pointerClient.x - sx, this.pointerClient.y - sy);
-          if (dist <= fallbackRadius && dist < minDistance) {
-            // Check occlusion: is this node hidden behind the Core from camera's view?
-            node.mesh.getWorldPosition(this.tempWorldPos);
-            const camPos = this.camera.position;
-            this.tempRayDir.subVectors(this.tempWorldPos, camPos).normalize();
-            this.occlusionRaycaster.set(camPos, this.tempRayDir);
-            this.occlusionIntersections.length = 0;
-            this.occlusionRaycaster.intersectObject(this.xiaoZhaiOSWorld.getCoreMesh(), false, this.occlusionIntersections);
-
-            let isOccluded = false;
-            if (this.occlusionIntersections.length > 0) {
-              const distToCore = this.occlusionIntersections[0].distance;
-              const distToNode = camPos.distanceTo(this.tempWorldPos);
-              if (distToCore < distToNode) {
-                isOccluded = true;
-              }
-            }
-
-            if (!isOccluded) {
-              minDistance = dist;
-              candidateNode = node;
-            }
-          }
-        }
-      }
-      hitNode = candidateNode;
-    }
-
-    // Core sensing (Fresnel contact spot only)
+    // Core sensing (Fresnel contact spot only - never triggers node descriptor or dwell)
     this.isCoreHovered = coreHit;
     this.xiaoZhaiOSWorld.setCoreHit(coreHitPoint);
 

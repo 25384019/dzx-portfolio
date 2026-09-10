@@ -27,12 +27,13 @@ export const DZXPortfolio: React.FC = () => {
     dwellProgress: 0,
   });
 
-  // Sync DOM descriptor element to ScenePortal
-  useEffect(() => {
+  // Direct callback ref syncing DOM descriptor element to ScenePortal (Zero React re-render overhead)
+  const descriptorCallbackRef = useCallback((el: HTMLDivElement | null) => {
+    descriptorRef.current = el;
     if (worldRef.current) {
-      worldRef.current.scenePortal.descriptorElement = descriptorRef.current;
+      worldRef.current.scenePortal.descriptorElement = el;
     }
-  });
+  }, []);
 
   // Initialize Three.js World
   useEffect(() => {
@@ -41,7 +42,9 @@ export const DZXPortfolio: React.FC = () => {
     const rootEl = containerRef.current;
     const world = new World(rootEl);
     worldRef.current = world;
-    (window as any).__DZX_WORLD__ = world;
+    if ((import.meta as any).env?.DEV) {
+      (window as any).__DZX_WORLD__ = world;
+    }
 
     // Detect scroll container (either parent with overflow or window)
     const scroller = rootEl.parentElement?.scrollHeight && rootEl.parentElement.scrollHeight > window.innerHeight
@@ -210,7 +213,7 @@ export const DZXPortfolio: React.FC = () => {
       <PresenceIntro isPortalLanded={isPortalLanded} />
 
       <NodeDescriptor
-        ref={descriptorRef}
+        ref={descriptorCallbackRef}
         hoveredNode={presenceState.hoveredNode}
         selectedNode={presenceState.selectedNode}
       />

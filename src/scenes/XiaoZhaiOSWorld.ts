@@ -242,8 +242,8 @@ export class XiaoZhaiOSWorld {
       const nodeBeacon = new THREE.Mesh(beaconGeo, beaconMat);
       nodeMesh.add(nodeBeacon);
 
-      // Dedicated Interaction Hit Proxy (Sphere radius 0.42, perfectly decoupled from visual wireframe)
-      const hitGeo = new THREE.SphereGeometry(0.42, 16, 12);
+      // Dedicated Interaction Hit Proxy (Shape-Matched Octahedron radius 0.36, perfectly aligned with visual 0.32)
+      const hitGeo = new THREE.OctahedronGeometry(0.36, 0);
       const hitMat = new THREE.MeshBasicMaterial({
         transparent: true,
         opacity: 0.0,
@@ -265,7 +265,7 @@ export class XiaoZhaiOSWorld {
         wire: nodeWire,
         beacon: nodeBeacon,
         hitMesh,
-        hitRadius: 0.42,
+        hitRadius: 0.36,
       });
     });
 
@@ -544,6 +544,13 @@ export class XiaoZhaiOSWorld {
       mat.opacity = debug ? 0.35 : 0.0;
       mat.color.setHex(debug ? 0x00ffcc : 0xffffff);
       mat.needsUpdate = true;
+    });
+  }
+
+  public setMobileHitProxy(isMobile: boolean): void {
+    const scale = isMobile ? 1.35 : 1.0;
+    this.memoryNodes.forEach((node) => {
+      node.hitMesh.scale.setScalar(scale);
     });
   }
 

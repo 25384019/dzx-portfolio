@@ -437,6 +437,8 @@ export class World {
     const height = window.innerHeight;
     this.renderer.setSize(width, height);
     this.cameraRig.resize(width, height);
+    const isMobile = width < 768 || ('ontouchstart' in window);
+    this.xiaoZhaiOSWorld.setMobileHitProxy(isMobile);
   }
 
   public dispose(): void {
