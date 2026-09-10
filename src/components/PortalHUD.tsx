@@ -2,12 +2,14 @@ import React, { useEffect } from 'react';
 
 interface PortalHUDProps {
   isInPortal: boolean;
+  isVisible?: boolean;
   portalTitle: string;
   onExit: () => void;
 }
 
 export const PortalHUD: React.FC<PortalHUDProps> = ({
   isInPortal,
+  isVisible = false,
   portalTitle,
   onExit,
 }) => {
@@ -30,13 +32,13 @@ export const PortalHUD: React.FC<PortalHUDProps> = ({
           position: 'fixed',
           top: 28,
           left: '50%',
-          transform: isInPortal
+          transform: isVisible
             ? 'translateX(-50%) translate3d(0, 0, 0)'
             : 'translateX(-50%) translate3d(0, -90px, 0)',
           zIndex: 9999,
-          opacity: isInPortal ? 1 : 0,
-          pointerEvents: isInPortal ? 'auto' : 'none',
-          transition: 'transform 0.8s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.6s ease',
+          opacity: isVisible ? 1 : 0,
+          pointerEvents: isVisible ? 'auto' : 'none',
+          transition: 'transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s ease',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -90,13 +92,13 @@ export const PortalHUD: React.FC<PortalHUDProps> = ({
           position: 'fixed',
           bottom: 28,
           left: '50%',
-          transform: isInPortal
+          transform: isVisible
             ? 'translateX(-50%) translate3d(0, 0, 0)'
             : 'translateX(-50%) translate3d(0, 50px, 0)',
           zIndex: 9998,
-          opacity: isInPortal ? 1 : 0,
+          opacity: isVisible ? 1 : 0,
           pointerEvents: 'none',
-          transition: 'all 0.8s cubic-bezier(0.16, 1, 0.3, 1)',
+          transition: 'all 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
           fontSize: 11,
           letterSpacing: '0.16em',
           color: 'rgba(223, 231, 224, 0.75)',

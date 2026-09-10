@@ -6,6 +6,8 @@ import { ScenePortal } from './ScenePortal';
 import { HomeScene } from '../scenes/HomeScene';
 import { AboutScene } from '../scenes/AboutScene';
 import { ProjectsScene } from '../scenes/ProjectsScene';
+import { InterestsScene } from '../scenes/InterestsScene';
+import { PhilosophyScene } from '../scenes/PhilosophyScene';
 import { XiaoZhaiOSWorld } from '../scenes/XiaoZhaiOSWorld';
 
 export class World {
@@ -24,7 +26,12 @@ export class World {
   public homeScene: HomeScene;
   public aboutScene: AboutScene;
   public projectsScene: ProjectsScene;
+  public interestsScene: InterestsScene;
+  public philosophyScene: PhilosophyScene;
   public xiaoZhaiOSWorld: XiaoZhaiOSWorld;
+
+  // Global ambient particle field with decrescendo into CONTACT
+  private globalParticles!: THREE.Points;
 
   // Lighting
   private ambientLight!: THREE.AmbientLight;
@@ -93,14 +100,21 @@ export class World {
     this.homeScene = new HomeScene();
     this.aboutScene = new AboutScene();
     this.projectsScene = new ProjectsScene();
+    this.interestsScene = new InterestsScene();
+    this.philosophyScene = new PhilosophyScene();
     this.xiaoZhaiOSWorld = new XiaoZhaiOSWorld();
 
     this.scene.add(this.homeScene.group);
     this.scene.add(this.aboutScene.group);
     this.scene.add(this.projectsScene.group);
+    this.scene.add(this.interestsScene.group);
+    this.scene.add(this.philosophyScene.group);
     this.scene.add(this.xiaoZhaiOSWorld.group);
 
-    // 6. Bind Events (Pointer, Drag, Wheel, Resize)
+    // 6. Global Ambient Particle Corridor with Decrescendo
+    this.buildGlobalParticleField();
+
+    // 7. Bind Events (Pointer, Drag, Wheel, Resize)
     this.boundResize = () => this.resize();
     this.boundPointerMove = (e: PointerEvent) => {
       this.cameraRig.updatePointer(e.clientX, e.clientY, window.innerWidth, window.innerHeight);
@@ -277,7 +291,10 @@ export class World {
     this.homeScene.update(this.clock, dt, smoothP);
     this.aboutScene.update(this.clock, dt, smoothP);
     this.projectsScene.update(this.clock, dt, smoothP);
-    this.xiaoZhaiOSWorld.update(this.clock, dt, this.scenePortal.isInPortal);
+    this.interestsScene.update(this.clock, dt, smoothP);
+    this.philosophyScene.update(this.clock, dt, smoothP);
+    this.xiaoZhaiOSWorld.update(this.clock, dt, this.scenePortal.isInPortal, this.transitionManager.progress);
+    this.updateGlobalParticles(smoothP, this.clock);
 
     // 4. Update Spatial Position-Driven DOM Reveal
     this.updateDOM(smoothP);
@@ -287,6 +304,65 @@ export class World {
 
     this.rafId = requestAnimationFrame(this.loop);
   };
+
+  private buildGlobalParticleField(): void {
+    const count = 480;
+    const positions = new Float32Array(count * 3);
+    const colors = new Float32Array(count * 3);
+
+    const cCyan = new THREE.Color(0x6e9eae);
+    const cBlue = new THREE.Color(0xb4c8d8);
+    const cPink = new THREE.Color(0xf2c8d0);
+
+    for (let i = 0; i < count; i++) {
+      // Distributed smoothly along the full corridor Z: 6 to -32
+      positions[i * 3] = (Math.random() - 0.5) * 14.0;
+      positions[i * 3 + 1] = 0.2 + Math.random() * 5.0;
+      positions[i * 3 + 2] = 6.0 - Math.random() * 38.0;
+
+      const pick = Math.random();
+      const col = pick < 0.5 ? cCyan : pick < 0.8 ? cBlue : cPink;
+      colors[i * 3] = col.r;
+      colors[i * 3 + 1] = col.g;
+      colors[i * 3 + 2] = col.b;
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+    const mat = new THREE.PointsMaterial({
+      size: 0.065,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.75,
+      blending: THREE.AdditiveBlending,
+    });
+
+    this.globalParticles = new THREE.Points(geo, mat);
+    this.scene.add(this.globalParticles);
+  }
+
+  private updateGlobalParticles(progress: number, time: number): void {
+    if (!this.globalParticles) return;
+
+    // Decrescendo requested by user:
+    // HOME -> PROJECTS -> INTERESTS (progress <= 3.2): 100% density/opacity
+    // PHILOSOPHY (progress 3.2 -> 4.2): drops from 1.0 to 0.60
+    // CONTACT entrance (progress 4.2 -> 4.7): drops from 0.60 to 0.25
+    // CONTACT terminal horizon (progress 4.7 -> 5.0): drops from 0.25 to 0.08
+    let particleFactor = 1.0;
+    if (progress > 3.2 && progress <= 4.2) {
+      particleFactor = THREE.MathUtils.lerp(1.0, 0.6, (progress - 3.2) / 1.0);
+    } else if (progress > 4.2 && progress <= 4.7) {
+      particleFactor = THREE.MathUtils.lerp(0.6, 0.25, (progress - 4.2) / 0.5);
+    } else if (progress > 4.7) {
+      particleFactor = THREE.MathUtils.lerp(0.25, 0.08, Math.min((progress - 4.7) / 0.3, 1.0));
+    }
+
+    (this.globalParticles.material as THREE.PointsMaterial).opacity = 0.75 * particleFactor;
+    this.globalParticles.rotation.y = time * 0.015;
+  }
 
   private domElements: HTMLElement[] = [];
   private domElementsMeasured: boolean = false;
@@ -364,7 +440,14 @@ export class World {
     this.homeScene.dispose();
     this.aboutScene.dispose();
     this.projectsScene.dispose();
+    this.interestsScene.dispose();
+    this.philosophyScene.dispose();
     this.xiaoZhaiOSWorld.dispose();
+
+    if (this.globalParticles) {
+      this.globalParticles.geometry.dispose();
+      (this.globalParticles.material as THREE.Material).dispose();
+    }
 
     this.renderer.dispose();
     if (this.canvas.parentElement) {

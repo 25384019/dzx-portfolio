@@ -174,7 +174,7 @@ export default function App() {
                 boxShadow: `0 0 10px ${primaryColor}`,
               }}
             />
-            <span style={{ fontWeight: 500 }}>KAGE · 調律</span>
+            <span style={{ fontWeight: 600, letterSpacing: '0.18em' }}>DZX · SIGNAL</span>
             <span style={{ color: '#78837c', fontSize: 10 }}>[H]</span>
           </button>
         ) : (
@@ -183,8 +183,8 @@ export default function App() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(223, 231, 224, 0.1)', paddingBottom: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <div style={{ width: 8, height: 8, borderRadius: '50%', background: primaryColor, boxShadow: `0 0 12px ${primaryColor}` }} />
-                <h1 style={{ fontSize: 13, fontWeight: 500, letterSpacing: '0.18em', textTransform: 'uppercase', margin: 0 }}>
-                  KAGE · 調律
+                <h1 style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase', margin: 0 }}>
+                  DZX · SIGNAL
                 </h1>
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>

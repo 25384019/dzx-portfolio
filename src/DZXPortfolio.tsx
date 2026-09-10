@@ -12,6 +12,7 @@ export const DZXPortfolio: React.FC = () => {
 
   const [activeChapter, setActiveChapter] = useState(0);
   const [isInPortal, setIsInPortal] = useState(false);
+  const [isHUDVisible, setIsHUDVisible] = useState(false);
 
   // Initialize Three.js World
   useEffect(() => {
@@ -42,30 +43,33 @@ export const DZXPortfolio: React.FC = () => {
     measureScroll();
     window.addEventListener('resize', measureScroll, { passive: true });
 
-    // Chapter polling from smoothProgress
-    const interval = setInterval(() => {
-      if (worldRef.current) {
-        setActiveChapter(worldRef.current.scrollController.activeChapter);
-      }
-    }, 80);
-
     return () => {
-      clearInterval(interval);
       window.removeEventListener('resize', measureScroll);
       world.dispose();
       worldRef.current = null;
     };
   }, []);
 
-  const handleSelectChapter = useCallback((index: number) => {
+  // Sync scroll position from World controller
+  useEffect(() => {
     if (!worldRef.current) return;
-    if (isInPortal) {
-      worldRef.current.exitXiaoZhaiOS();
-    }
-    const targetScrollY = worldRef.current.scrollController.getAnchor(index);
-    const scroller = worldRef.current.scrollElement;
-    if (scroller) {
-      scroller.scrollTo({
+    const interval = setInterval(() => {
+      if (worldRef.current && !isInPortal) {
+        const rawP = worldRef.current.scrollController.smoothProgress;
+        const currentCh = Math.min(Math.max(Math.round(rawP), 0), 5);
+        setActiveChapter(currentCh);
+      }
+    }, 100);
+    return () => clearInterval(interval);
+  }, [isInPortal]);
+
+  const handleSelectChapter = useCallback((index: number) => {
+    if (isInPortal) return;
+    const maxScroll = (document.body.scrollHeight || window.innerHeight * 6) - window.innerHeight;
+    const targetScrollY = (index / 5) * maxScroll;
+
+    if (containerRef.current) {
+      containerRef.current.scrollTo({
         top: targetScrollY,
         behavior: 'smooth',
       });
@@ -77,16 +81,35 @@ export const DZXPortfolio: React.FC = () => {
     }
   }, [isInPortal]);
 
+  /**
+   * Refined Portal Entry Sequence:
+   * 0-25%: Project UI rapid fade out (0.35s)
+   * 20-65%: Camera flight through deep conduits (no portal HUD)
+   * 60-80%: Memory Core & semantic network materializes
+   * 75-100%: Portal HUD smoothly fades in
+   */
   const handleExploreXiaoZhaiOS = useCallback(() => {
     if (!worldRef.current) return;
-    worldRef.current.enterXiaoZhaiOS();
     setIsInPortal(true);
+    setIsHUDVisible(false);
+    worldRef.current.enterXiaoZhaiOS();
+
+    // Fade in HUD only once camera has nearly arrived at Memory Core
+    setTimeout(() => {
+      setIsHUDVisible(true);
+    }, 1350);
   }, []);
 
   const handleExitPortal = useCallback(() => {
     if (!worldRef.current) return;
+    // Rapidly drop HUD
+    setIsHUDVisible(false);
     worldRef.current.exitXiaoZhaiOS();
-    setIsInPortal(false);
+
+    // Restore DOM overlay once camera approaches original projects track
+    setTimeout(() => {
+      setIsInPortal(false);
+    }, 1200);
   }, []);
 
   return (
@@ -149,17 +172,20 @@ export const DZXPortfolio: React.FC = () => {
       {/* XiaoZhaiOS Portal HUD (Top Return & Bottom Hints) */}
       <PortalHUD
         isInPortal={isInPortal}
-        portalTitle="XiaoZhaiOS · Neural Data World"
+        isVisible={isHUDVisible}
+        portalTitle="XiaoZhaiOS · Memory System"
         onExit={handleExitPortal}
       />
 
-      {/* DOM Chapter Overlay (Transitions smoothly out when entering portal) */}
+      {/* DOM Chapter Overlay (Quick 0.35s exit when entering portal, smooth 0.6s return) */}
       <div
         className="dzx-dom-overlay"
         style={{
           position: 'relative',
           zIndex: 10,
-          transition: 'opacity 1.4s cubic-bezier(0.22, 0.61, 0.36, 1), transform 1.4s cubic-bezier(0.22, 0.61, 0.36, 1)',
+          transition: isInPortal
+            ? 'opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), transform 0.35s ease-out'
+            : 'opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1)',
           opacity: isInPortal ? 0 : 1,
           transform: isInPortal ? 'translate3d(0, 36px, 0) scale(0.98)' : 'none',
           pointerEvents: isInPortal ? 'none' : 'auto',

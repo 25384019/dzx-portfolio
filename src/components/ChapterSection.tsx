@@ -314,7 +314,10 @@ export const ChapterSection: React.FC<ChapterSectionProps> = ({ onExploreXiaoZha
                     margin: 0,
                   }}
                 >
-                  XiaoZhaiOS
+                  <span translate="no">XiaoZhaiOS</span>
+                  <span style={{ fontSize: '0.55em', fontWeight: 400, color: '#b4c8d8', marginLeft: 12 }}>
+                    小宅OS
+                  </span>
                 </h3>
               </div>
 
@@ -585,14 +588,28 @@ export const ChapterSection: React.FC<ChapterSectionProps> = ({ onExploreXiaoZha
 
           <p
             style={{
-              fontSize: 15,
+              fontSize: 'clamp(16px, 1.8vw, 20px)',
               lineHeight: 1.7,
-              color: 'rgba(223, 231, 224, 0.7)',
-              fontWeight: 300,
-              marginBottom: 36,
+              color: '#dfe7e0',
+              fontWeight: 400,
+              marginBottom: 10,
+              letterSpacing: '0.02em',
             }}
           >
-            Available for architectural consulting, AI agent systems research, and high-impact digital engineering.
+            关于 AI、软件、数字体验，或者一个值得实现的想法。
+          </p>
+
+          <p
+            style={{
+              fontSize: 13,
+              lineHeight: 1.6,
+              color: 'rgba(223, 231, 224, 0.55)',
+              fontWeight: 300,
+              marginBottom: 36,
+              letterSpacing: '0.04em',
+            }}
+          >
+            Available for AI, software architecture, digital experiences, or an idea worth bringing to life.
           </p>
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
