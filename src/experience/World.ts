@@ -266,9 +266,8 @@ export class World {
       this.clock
     );
 
-    // 2. Update Transitions & Sub-Scene Portal
+    // 2. Update Transitions & Camera Placement
     this.transitionManager.update(dt);
-    this.scenePortal.update(dt);
 
     if (this.transitionManager.progress > 0.0001) {
       // Override camera with smooth curved flight (Zero-GC preallocated vectors)
@@ -296,6 +295,9 @@ export class World {
       }
     }
 
+    // Ensure camera world matrix is completely up-to-date for raycasting and scene rendering
+    this.cameraRig.camera.updateMatrixWorld();
+
     // 3. Update Scene Animations with Continuous Spatial Progress
     const smoothP = this.scrollController.smoothProgress;
     this.homeScene.update(this.clock, dt, smoothP);
@@ -306,10 +308,13 @@ export class World {
     this.xiaoZhaiOSWorld.update(this.clock, dt, this.scenePortal.isInPortal, this.transitionManager.progress);
     this.updateGlobalParticles(smoothP, this.clock);
 
-    // 4. Update Spatial Position-Driven DOM Reveal
+    // 4. Update Sub-Scene Portal Raycasting & Presence Recognition (frame-perfect camera & node matrices)
+    this.scenePortal.update(dt);
+
+    // 5. Update Spatial Position-Driven DOM Reveal
     this.updateDOM(smoothP);
 
-    // 5. Render
+    // 6. Render
     this.renderer.render(this.scene, this.cameraRig.camera);
 
     this.rafId = requestAnimationFrame(this.loop);

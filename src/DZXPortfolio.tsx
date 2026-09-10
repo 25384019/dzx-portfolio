@@ -42,6 +42,9 @@ export const DZXPortfolio: React.FC = () => {
     const rootEl = containerRef.current;
     const world = new World(rootEl);
     worldRef.current = world;
+    if (descriptorRef.current) {
+      world.scenePortal.descriptorElement = descriptorRef.current;
+    }
     if ((import.meta as any).env?.DEV) {
       (window as any).__DZX_WORLD__ = world;
     }
