@@ -39,6 +39,9 @@ export class World {
   private rimLight!: THREE.DirectionalLight;
 
   // Lifecycle
+  public onPortalLanded?: () => void;
+  private tempFlightP: THREE.Vector3 = new THREE.Vector3();
+  private tempFlightT: THREE.Vector3 = new THREE.Vector3();
   private isRunning: boolean = false;
   private clock: number = 0;
   private prevTime: number = performance.now();
@@ -91,6 +94,11 @@ export class World {
     // Wire ScenePortal background click to exit
     this.scenePortal.onBackgroundClick = () => {
       this.exitXiaoZhaiOS();
+    };
+
+    // Wire transition landing signal
+    this.transitionManager.onEnterComplete = () => {
+      this.onPortalLanded?.();
     };
 
     // 4. Lights
@@ -263,14 +271,14 @@ export class World {
     this.scenePortal.update(dt);
 
     if (this.transitionManager.progress > 0.0001) {
-      // Override camera with smooth curved flight
-      const flightP = new THREE.Vector3().copy(this.transitionManager.currentP);
-      const flightT = new THREE.Vector3().copy(this.transitionManager.currentT);
+      // Override camera with smooth curved flight (Zero-GC preallocated vectors)
+      const flightP = this.tempFlightP.copy(this.transitionManager.currentP);
+      const flightT = this.tempFlightT.copy(this.transitionManager.currentT);
       const flightFov = this.transitionManager.currentFov;
 
       // Apply free look, drag, and parallax when in portal
       const ease = TransitionManager.easeFlight(this.transitionManager.progress);
-      const portalRes = this.scenePortal.applyToCamera(
+      const newFov = this.scenePortal.applyToCamera(
         flightP,
         flightT,
         flightFov,
@@ -282,8 +290,8 @@ export class World {
 
       this.cameraRig.camera.position.copy(flightP);
       this.cameraRig.camera.lookAt(flightT);
-      if (Math.abs(this.cameraRig.camera.fov - portalRes.fov) > 1e-4) {
-        this.cameraRig.camera.fov = portalRes.fov;
+      if (Math.abs(this.cameraRig.camera.fov - newFov) > 1e-4) {
+        this.cameraRig.camera.fov = newFov;
         this.cameraRig.camera.updateProjectionMatrix();
       }
     }

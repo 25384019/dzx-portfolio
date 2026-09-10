@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 
 interface PresenceCursorProps {
   isVisible: boolean;
@@ -9,7 +9,7 @@ export const PresenceCursor: React.FC<PresenceCursorProps> = ({
   isVisible,
   isFocused,
 }) => {
-  const [pos, setPos] = useState({ x: -100, y: -100 });
+  const containerRef = useRef<HTMLDivElement>(null);
   const mouseRef = useRef({ x: -100, y: -100 });
   const rafRef = useRef<number>(0);
 
@@ -25,11 +25,11 @@ export const PresenceCursor: React.FC<PresenceCursorProps> = ({
     let currentY = -100;
 
     const loop = () => {
-      if (mouseRef.current.x > 0) {
-        // Subtle damping for organic feel
+      if (mouseRef.current.x > 0 && containerRef.current) {
+        // Subtle organic damping without React state overhead
         currentX += (mouseRef.current.x - currentX) * 0.35;
         currentY += (mouseRef.current.y - currentY) * 0.35;
-        setPos({ x: currentX, y: currentY });
+        containerRef.current.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
       }
       rafRef.current = requestAnimationFrame(loop);
     };
@@ -42,10 +42,9 @@ export const PresenceCursor: React.FC<PresenceCursorProps> = ({
     };
   }, []);
 
-  if (!isVisible || pos.x < 0) return null;
-
   return (
     <div
+      ref={containerRef}
       aria-hidden="true"
       style={{
         position: 'fixed',
@@ -53,8 +52,9 @@ export const PresenceCursor: React.FC<PresenceCursorProps> = ({
         left: 0,
         pointerEvents: 'none',
         zIndex: 99999,
-        transform: `translate3d(${pos.x}px, ${pos.y}px, 0)`,
+        transform: 'translate3d(-100px, -100px, 0)',
         willChange: 'transform',
+        display: isVisible ? 'block' : 'none',
       }}
     >
       {/* Outer Focusing Ring (tightens from scale 1.0 -> 0.72 when focused) */}

@@ -1,38 +1,39 @@
 import React, { useEffect, useState } from 'react';
 
 interface PresenceIntroProps {
-  isInPortal: boolean;
+  isPortalLanded: boolean;
 }
 
-export const PresenceIntro: React.FC<PresenceIntroProps> = ({ isInPortal }) => {
+export const PresenceIntro: React.FC<PresenceIntroProps> = ({ isPortalLanded }) => {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    if (!isInPortal) {
+    if (!isPortalLanded) {
       setVisible(false);
       return;
     }
 
-    // 600ms after landing in portal, quietly reveal the micro text
+    // 600ms after landing complete in portal, quietly reveal the micro text
     const showTimer = setTimeout(() => {
       setVisible(true);
-    }, 650);
+    }, 600);
 
-    // After 1.3s of subtle display, gracefully dissolve away
+    // After 1.5s of subtle display, gracefully dissolve away
     const hideTimer = setTimeout(() => {
       setVisible(false);
-    }, 2100);
+    }, 2200);
 
     return () => {
       clearTimeout(showTimer);
       clearTimeout(hideTimer);
     };
-  }, [isInPortal]);
+  }, [isPortalLanded]);
 
-  if (!isInPortal && !visible) return null;
+  if (!isPortalLanded && !visible) return null;
 
   return (
     <aside
+      className="dzx-presence-intro"
       aria-hidden="true"
       style={{
         position: 'fixed',

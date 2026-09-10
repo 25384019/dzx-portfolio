@@ -9,6 +9,7 @@ export interface MemoryNode {
   mesh: THREE.Mesh;
   wire: THREE.LineSegments;
   beacon: THREE.Mesh;
+  hitMesh: THREE.Mesh;
   hitRadius: number;
 }
 
@@ -26,6 +27,7 @@ export class XiaoZhaiOSWorld {
   private coreWire!: THREE.LineSegments;
   private coreHaloRings: THREE.LineSegments[] = [];
   private coreLight!: THREE.PointLight;
+  private readonly coreOrigin: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
 
   // 1b. Core Surface Fresnel Cursor Response
   private coreSurfaceSpot!: THREE.Mesh;
@@ -96,6 +98,7 @@ export class XiaoZhaiOSWorld {
       opacity: 0.9,
     });
     this.coreMesh = new THREE.Mesh(geo, mat);
+    this.coreMesh.userData = { type: 'core' };
     this.group.add(this.coreMesh);
 
     const wireGeo = new THREE.EdgesGeometry(geo);
@@ -206,7 +209,7 @@ export class XiaoZhaiOSWorld {
     ];
 
     nodeConfigs.forEach((cfg) => {
-      // Node housing mesh
+      // Node housing mesh (Visual geometry: Octahedron radius 0.32)
       const nodeGeo = new THREE.OctahedronGeometry(0.32, 0);
       const nodeMat = new THREE.MeshStandardMaterial({
         color: 0x060b12,
@@ -239,6 +242,17 @@ export class XiaoZhaiOSWorld {
       const nodeBeacon = new THREE.Mesh(beaconGeo, beaconMat);
       nodeMesh.add(nodeBeacon);
 
+      // Dedicated Interaction Hit Proxy (Sphere radius 0.42, perfectly decoupled from visual wireframe)
+      const hitGeo = new THREE.SphereGeometry(0.42, 16, 12);
+      const hitMat = new THREE.MeshBasicMaterial({
+        transparent: true,
+        opacity: 0.0,
+        depthWrite: false,
+      });
+      const hitMesh = new THREE.Mesh(hitGeo, hitMat);
+      hitMesh.userData = { type: 'node', nodeId: cfg.id };
+      nodeMesh.add(hitMesh);
+
       this.group.add(nodeMesh);
 
       this.memoryNodes.push({
@@ -250,7 +264,8 @@ export class XiaoZhaiOSWorld {
         mesh: nodeMesh,
         wire: nodeWire,
         beacon: nodeBeacon,
-        hitRadius: 0.65,
+        hitMesh,
+        hitRadius: 0.42,
       });
     });
 
@@ -514,6 +529,24 @@ export class XiaoZhaiOSWorld {
     return this.coreMesh;
   }
 
+  /**
+   * Returns single-pass interaction targets: [CoreMesh, ...NodeHitProxies]
+   * Decoupled from visual wireframes and beacons
+   */
+  public getInteractionTargets(): THREE.Object3D[] {
+    return [this.coreMesh, ...this.memoryNodes.map(n => n.hitMesh)];
+  }
+
+  public setHitProxyDebug(debug: boolean): void {
+    this.memoryNodes.forEach((node) => {
+      const mat = node.hitMesh.material as THREE.MeshBasicMaterial;
+      mat.wireframe = debug;
+      mat.opacity = debug ? 0.35 : 0.0;
+      mat.color.setHex(debug ? 0x00ffcc : 0xffffff);
+      mat.needsUpdate = true;
+    });
+  }
+
   public setCoreHit(hitPoint: THREE.Vector3 | null): void {
     if (hitPoint) {
       this.isCoreHit = true;
@@ -628,7 +661,7 @@ export class XiaoZhaiOSWorld {
     if (this.activeDwellNode && this.dwellPulseBead.visible) {
       this.dwellT = (this.dwellT + dt * 0.7) % 1.0;
       // Lerp bead from node position to core (0, 0, 0)
-      this.dwellPulseBead.position.lerpVectors(this.activeDwellNode.position, new THREE.Vector3(0, 0, 0), this.dwellT);
+      this.dwellPulseBead.position.lerpVectors(this.activeDwellNode.position, this.coreOrigin, this.dwellT);
     }
 
     // 3. Abstract Hand Signature Evolution

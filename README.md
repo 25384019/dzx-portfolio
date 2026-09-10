@@ -26,14 +26,14 @@
    - **主世界空间隔离**：普通滚动时 XiaoZhaiOS 保持静默待命，彻底消除与 Chapter 3 的视觉冲突。
    - 空间内支持 **360° 球面阻尼自由旋转拖拽、滚轮焦距缩放 (FOV)、鼠标光影感应与点击背景平滑倒流返回**。
 
-4. **存在识别交互系统 (Presence Recognition · 2.3.0)**：
+4. **存在识别交互系统 (Presence Recognition · 2.3.0 / 2.3.1 Polish)**：
    - **“Interaction discovered, not announced.”** 极度克制、冷静的数字装置艺术级感知语言。
-   - **Presence Cursor（聚焦光标）**：隐藏系统光标，中央 2.5px 柔和微光点 + 22px 外环。靠近可交互节点或 Core 时，外环缓慢收紧（`scale: 1.0 → 0.72`）且透明度提升（`0.35 → 0.85`），产生“系统完成聚焦”的克制心理反馈。
-   - **Presence Detection 仪式**：镜头落位后 650ms，Core 表面扩散淡扫描波，屏幕角落低透明度浮现 `PRESENCE DETECTED / SPATIAL INPUT AVAILABLE`，持续 1.3 秒后静默消退。
-   - **抽象手印记解构与吸收**：5 指尖 + 掌心极简顶点群显现 750ms，随后光点自然脱落、漂移并化作普通星尘被记忆世界完全吸收。
-   - **Memory Core 表面菲涅尔跟随**：光标掠过 Core 时表面产生 100ms 滞后的柔和局部高光（离开后 500ms 消散），Core 自身保持静默不跟转。
-   - **节点微引导线与 Dwell 驻留传导**：靠近节点微短锚线展示认知域名与序号；停留 > 1.1s 激活与 Core 的微弱二级生物导线并传导单次慢速脉冲。
-   - **非模态空间选中**：点击节点背景微暗 10%、目标节点微亮并微调镜头视点聚焦，点击背景自然解选恢复。
+   - **视觉几何与碰撞体解耦 (Visual-Proxy Decoupling · 2.3.1)**：视觉八面体（半径 0.32），射线检测专用隐形球形代理（半径 0.42），彻底规避线框阈值扩大问题；桌面端近距兜底收紧至 20px（移动端 32px）。
+   - **单通道射线检测与三维遮挡剔除 (Single-pass Raycast & Depth Occlusion · 2.3.1)**：Core 与认知节点合并入单次有序射线检测；若 Core 位于前方（距离更近），其后方节点被物理遮挡，无法穿透聚焦或触发。
+   - **Core 探测与节点聚焦解耦**：掠过 Core 仅激发表面菲涅尔微光接触点；仅在光标触及记忆节点时才收紧光标（0.72x）、唤出微描述器与激活 Dwell 驻留。
+   - **全链路零垃圾回收 (Zero GC Hot Loop · 2.3.1)**：预分配射线交点数组、遮挡检测器与相机演算向量；消除 `applyToCamera()` 逐帧对象分配，彻底抹除 Hot Loop 内存抖动。
+   - **60fps React 渲染桥断开 (Direct DOM Transform · 2.3.1)**：光标阻尼平滑与描述器跟随完全由 DOM Ref `transform` 驱动，仅在离散状态（`hoveredNodeId`, `selectedNodeId`, `isFocused`, `isCoreHit`）变化时触发 React 更新。
+   - **落地时序与微引导线自适应边缘对齐 (Adaptive Placement · 2.3.1)**：微提示文本严格在镜头落位完成（`isPortalLanded`）后 600ms 静默浮现；节点描述器根据屏幕象限智能翻转（左/右、上/下），避让顶部 HUD 并避免屏幕边缘截断。
 
 5. **DOM 与 3D 深度绑定 (Spatial Position-Driven Reveal)**：
    - 各章节文本与卡片依据摄像机在 3D 空间中的深度进度被“发现”，适时淡入、对齐、漂移与退场。

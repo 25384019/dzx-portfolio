@@ -52,6 +52,23 @@ export class ScenePortal {
   // Raycasting (Zero hot-loop allocations)
   private raycaster: THREE.Raycaster = new THREE.Raycaster();
   private tempProjVec: THREE.Vector3 = new THREE.Vector3();
+  private tempWorldPos: THREE.Vector3 = new THREE.Vector3();
+  private tempRayDir: THREE.Vector3 = new THREE.Vector3();
+  private occlusionRaycaster: THREE.Raycaster = new THREE.Raycaster();
+  private allIntersections: THREE.Intersection[] = [];
+  private occlusionIntersections: THREE.Intersection[] = [];
+  private readonly portalCenter: THREE.Vector3 = new THREE.Vector3(0.5, 2.2, -14.0);
+
+  // DOM Descriptor Element direct imperative ref
+  public descriptorElement: HTMLElement | null = null;
+
+  // Cached discrete state to eliminate 60fps React render bridge
+  private lastReportedState = {
+    isFocused: false,
+    isCoreHit: false,
+    hoveredNodeId: null as string | null,
+    selectedNodeId: null as string | null,
+  };
 
   // Interaction State
   public hoveredNodeId: string | null = null;
@@ -83,6 +100,9 @@ export class ScenePortal {
     this.isInPortal = false;
     this.activePortalId = '';
     this.resetControls();
+    if (this.descriptorElement) {
+      this.descriptorElement.style.opacity = '0';
+    }
     if (this.xiaoZhaiOSWorld) {
       this.xiaoZhaiOSWorld.hoveredNodeId = null;
       this.xiaoZhaiOSWorld.selectedNodeId = null;
@@ -106,6 +126,12 @@ export class ScenePortal {
     this.dwellTimer = 0;
     this.currentTargetOffset.set(0, 0, 0);
     this.desiredTargetOffset.set(0, 0, 0);
+    this.lastReportedState = {
+      isFocused: false,
+      isCoreHit: false,
+      hoveredNodeId: null,
+      selectedNodeId: null,
+    };
   }
 
   public handlePointerDown(e: MouseEvent | TouchEvent | PointerEvent): void {
@@ -227,51 +253,86 @@ export class ScenePortal {
     if (!this.camera || !this.xiaoZhaiOSWorld) return;
 
     this.raycaster.setFromCamera(this.pointerNDC, this.camera);
+    this.allIntersections.length = 0;
 
-    // Test Core surface raycast
-    const coreMesh = this.xiaoZhaiOSWorld.getCoreMesh();
-    const coreIntersects = this.raycaster.intersectObject(coreMesh, false);
-    if (coreIntersects.length > 0) {
-      this.isCoreHovered = true;
-      this.xiaoZhaiOSWorld.setCoreHit(coreIntersects[0].point);
-    } else {
-      this.isCoreHovered = false;
-      this.xiaoZhaiOSWorld.setCoreHit(null);
-    }
+    // Single-pass test across Core and Hit Proxies
+    const targets = this.xiaoZhaiOSWorld.getInteractionTargets();
+    this.raycaster.intersectObjects(targets, false, this.allIntersections);
 
-    // Test Memory Nodes
     const nodes = this.xiaoZhaiOSWorld.getMemoryNodes();
     let hitNode: MemoryNode | null = null;
+    let coreHit = false;
+    let coreHitPoint: THREE.Vector3 | null = null;
 
-    for (const node of nodes) {
-      const nodeIntersects = this.raycaster.intersectObject(node.mesh, true);
-      if (nodeIntersects.length > 0) {
-        hitNode = node;
-        break;
+    if (this.allIntersections.length > 0) {
+      const closest = this.allIntersections[0];
+      if (closest.object.userData.type === 'core') {
+        coreHit = true;
+        coreHitPoint = closest.point;
+        // Core is in front: any node behind Core is physically occluded
+        hitNode = null;
+      } else if (closest.object.userData.type === 'node') {
+        const nodeId = closest.object.userData.nodeId;
+        hitNode = nodes.find(n => n.id === nodeId) || null;
+        coreHit = false;
+        coreHitPoint = null;
       }
     }
 
-    // Proximity check in screen space if raycast was a near-miss
-    if (!hitNode) {
+    // Screen proximity fallback if raycast missed, but NOT if Core was directly hit
+    if (!hitNode && !coreHit && this.isInPortal) {
+      const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.innerWidth < 768;
+      const fallbackRadius = isMobile ? 32 : 20; // 18~22px desktop fallback, 32px mobile
       const width = window.innerWidth;
       const height = window.innerHeight;
+
+      let minDistance = Infinity;
+      let candidateNode: MemoryNode | null = null;
+
       for (const node of nodes) {
         node.mesh.getWorldPosition(this.tempProjVec);
         this.tempProjVec.project(this.camera);
-        const sx = (this.tempProjVec.x * 0.5 + 0.5) * width;
-        const sy = (-this.tempProjVec.y * 0.5 + 0.5) * height;
-        const dist = Math.hypot(this.pointerClient.x - sx, this.pointerClient.y - sy);
-        if (dist < 44 && this.tempProjVec.z < 1) { // 44px near-focus radius
-          hitNode = node;
-          break;
+        if (this.tempProjVec.z < 1) {
+          const sx = (this.tempProjVec.x * 0.5 + 0.5) * width;
+          const sy = (-this.tempProjVec.y * 0.5 + 0.5) * height;
+          const dist = Math.hypot(this.pointerClient.x - sx, this.pointerClient.y - sy);
+          if (dist <= fallbackRadius && dist < minDistance) {
+            // Check occlusion: is this node hidden behind the Core from camera's view?
+            node.mesh.getWorldPosition(this.tempWorldPos);
+            const camPos = this.camera.position;
+            this.tempRayDir.subVectors(this.tempWorldPos, camPos).normalize();
+            this.occlusionRaycaster.set(camPos, this.tempRayDir);
+            this.occlusionIntersections.length = 0;
+            this.occlusionRaycaster.intersectObject(this.xiaoZhaiOSWorld.getCoreMesh(), false, this.occlusionIntersections);
+
+            let isOccluded = false;
+            if (this.occlusionIntersections.length > 0) {
+              const distToCore = this.occlusionIntersections[0].distance;
+              const distToNode = camPos.distanceTo(this.tempWorldPos);
+              if (distToCore < distToNode) {
+                isOccluded = true;
+              }
+            }
+
+            if (!isOccluded) {
+              minDistance = dist;
+              candidateNode = node;
+            }
+          }
         }
       }
+      hitNode = candidateNode;
     }
 
+    // Core sensing (Fresnel contact spot only)
+    this.isCoreHovered = coreHit;
+    this.xiaoZhaiOSWorld.setCoreHit(coreHitPoint);
+
+    // Node focus
     this.hoveredNodeId = hitNode ? hitNode.id : null;
     this.xiaoZhaiOSWorld.hoveredNodeId = this.hoveredNodeId;
 
-    // Dwell timer management
+    // Dwell conduction (Only when hovering a node, NOT on core)
     if (this.hoveredNodeId) {
       this.dwellTimer += dt;
       const dwellProg = THREE.MathUtils.clamp((this.dwellTimer - 0.4) / (this.dwellThreshold - 0.4), 0, 1);
@@ -281,45 +342,97 @@ export class ScenePortal {
       this.xiaoZhaiOSWorld.setDwellConnection(null, 0);
     }
 
-    // Broadcast presence update to UI
-    const isFocused = this.isCoreHovered || this.hoveredNodeId !== null;
-    const dwellProgress = THREE.MathUtils.clamp(this.dwellTimer / this.dwellThreshold, 0, 1);
+    // Update NodeDescriptor imperative screen position and edge placement
+    const activeTargetId = this.selectedNodeId || this.hoveredNodeId;
+    if (this.descriptorElement) {
+      if (activeTargetId && this.camera && this.xiaoZhaiOSWorld) {
+        const activeNode = nodes.find(n => n.id === activeTargetId);
+        if (activeNode) {
+          activeNode.mesh.getWorldPosition(this.tempProjVec);
+          this.tempProjVec.project(this.camera);
+          const W = window.innerWidth;
+          const H = window.innerHeight;
+          const sx = (this.tempProjVec.x * 0.5 + 0.5) * W;
+          const sy = (-this.tempProjVec.y * 0.5 + 0.5) * H;
 
-    const getScreenInfo = (targetId: string | null): PresenceNodeInfo | null => {
-      if (!targetId) return null;
-      const n = nodes.find(item => item.id === targetId);
-      if (!n || !this.camera) return null;
+          const isRightHalf = sx > W * 0.5;
+          const isNearTop = sy < 115;
+          const isNearBottom = sy > H - 120;
 
-      n.mesh.getWorldPosition(this.tempProjVec);
-      this.tempProjVec.project(this.camera);
-      const sx = (this.tempProjVec.x * 0.5 + 0.5) * window.innerWidth;
-      const sy = (-this.tempProjVec.y * 0.5 + 0.5) * window.innerHeight;
+          const offsetX = isRightHalf ? -240 : 20;
+          const offsetY = isNearTop ? 20 : isNearBottom ? -55 : -36;
 
-      return {
-        id: n.id,
-        label: n.label,
-        sublabel: n.sublabel,
-        screenX: sx,
-        screenY: sy,
-        color: n.color,
-        isSelected: this.selectedNodeId === n.id,
-        isHovered: this.hoveredNodeId === n.id,
-      };
-    };
+          const finalX = THREE.MathUtils.clamp(sx + offsetX, 20, W - 250);
+          const finalY = THREE.MathUtils.clamp(sy + offsetY, 80, H - 110);
 
-    if (this.onPresenceChange) {
-      this.onPresenceChange({
+          this.descriptorElement.style.transform = `translate3d(${Math.round(finalX)}px, ${Math.round(finalY)}px, 0)`;
+          this.descriptorElement.style.opacity = '1';
+          this.descriptorElement.setAttribute('data-placement-x', isRightHalf ? 'left' : 'right');
+          this.descriptorElement.setAttribute('data-placement-y', isNearTop ? 'bottom' : isNearBottom ? 'top' : 'default');
+        } else {
+          this.descriptorElement.style.opacity = '0';
+        }
+      } else {
+        this.descriptorElement.style.opacity = '0';
+      }
+    }
+
+    // Discrete React State Broadcast (Zero 60fps bridge)
+    // Note: Core hover does NOT trigger cursor tightening or descriptor; only node hover does.
+    const isFocused = this.hoveredNodeId !== null || this.selectedNodeId !== null;
+    const isCoreHit = this.isCoreHovered;
+    const stateChanged =
+      isFocused !== this.lastReportedState.isFocused ||
+      isCoreHit !== this.lastReportedState.isCoreHit ||
+      this.hoveredNodeId !== this.lastReportedState.hoveredNodeId ||
+      this.selectedNodeId !== this.lastReportedState.selectedNodeId;
+
+    if (stateChanged) {
+      this.lastReportedState = {
         isFocused,
-        isCoreHit: this.isCoreHovered,
-        hoveredNode: getScreenInfo(this.hoveredNodeId),
-        selectedNode: getScreenInfo(this.selectedNodeId),
-        dwellProgress,
-      });
+        isCoreHit,
+        hoveredNodeId: this.hoveredNodeId,
+        selectedNodeId: this.selectedNodeId,
+      };
+
+      if (this.onPresenceChange) {
+        const getScreenInfo = (targetId: string | null): PresenceNodeInfo | null => {
+          if (!targetId) return null;
+          const n = nodes.find(item => item.id === targetId);
+          if (!n || !this.camera) return null;
+
+          n.mesh.getWorldPosition(this.tempProjVec);
+          this.tempProjVec.project(this.camera);
+          const sx = (this.tempProjVec.x * 0.5 + 0.5) * window.innerWidth;
+          const sy = (-this.tempProjVec.y * 0.5 + 0.5) * window.innerHeight;
+
+          return {
+            id: n.id,
+            label: n.label,
+            sublabel: n.sublabel,
+            screenX: sx,
+            screenY: sy,
+            color: n.color,
+            isSelected: this.selectedNodeId === n.id,
+            isHovered: this.hoveredNodeId === n.id,
+          };
+        };
+
+        const dwellProgress = THREE.MathUtils.clamp(this.dwellTimer / this.dwellThreshold, 0, 1);
+        this.onPresenceChange({
+          isFocused,
+          isCoreHit,
+          hoveredNode: getScreenInfo(this.hoveredNodeId),
+          selectedNode: getScreenInfo(this.selectedNodeId),
+          dwellProgress,
+        });
+      }
     }
   }
 
   /**
    * Applies 360-degree spherical orbit, subtle node-shift focus, and zoom to camera.
+   * Returns scalar fov directly to eliminate per-frame object allocation (Zero GC).
    */
   public applyToCamera(
     outP: THREE.Vector3,
@@ -329,9 +442,9 @@ export class ScenePortal {
     my: number,
     time: number,
     blendFactor: number = 1
-  ): { fov: number } {
+  ): number {
     const k = blendFactor;
-    const center = new THREE.Vector3(0.5, 2.2, -14.0);
+    const center = this.portalCenter;
     const baseDist = 7.0;
     const currentDist = THREE.MathUtils.clamp(baseDist + this.zoom, 3.2, 12.5);
 
@@ -351,8 +464,6 @@ export class ScenePortal {
     outT.y = THREE.MathUtils.lerp(outT.y, center.y + my * 0.16 + breatheY * 0.5 + this.currentTargetOffset.y, k);
     outT.z = THREE.MathUtils.lerp(outT.z, center.z + this.currentTargetOffset.z, k);
 
-    return {
-      fov: outFov + this.zoom * 1.5 * k,
-    };
+    return outFov + this.zoom * 1.5 * k;
   }
 }

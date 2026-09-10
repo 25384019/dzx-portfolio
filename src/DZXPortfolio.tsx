@@ -13,9 +13,11 @@ import { PresenceState } from './experience/ScenePortal';
 export const DZXPortfolio: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const worldRef = useRef<World | null>(null);
+  const descriptorRef = useRef<HTMLDivElement>(null);
 
   const [activeChapter, setActiveChapter] = useState(0);
   const [isInPortal, setIsInPortal] = useState(false);
+  const [isPortalLanded, setIsPortalLanded] = useState(false);
   const [isHUDVisible, setIsHUDVisible] = useState(false);
   const [presenceState, setPresenceState] = useState<PresenceState>({
     isFocused: false,
@@ -25,6 +27,13 @@ export const DZXPortfolio: React.FC = () => {
     dwellProgress: 0,
   });
 
+  // Sync DOM descriptor element to ScenePortal
+  useEffect(() => {
+    if (worldRef.current) {
+      worldRef.current.scenePortal.descriptorElement = descriptorRef.current;
+    }
+  });
+
   // Initialize Three.js World
   useEffect(() => {
     if (!containerRef.current) return;
@@ -32,6 +41,7 @@ export const DZXPortfolio: React.FC = () => {
     const rootEl = containerRef.current;
     const world = new World(rootEl);
     worldRef.current = world;
+    (window as any).__DZX_WORLD__ = world;
 
     // Detect scroll container (either parent with overflow or window)
     const scroller = rootEl.parentElement?.scrollHeight && rootEl.parentElement.scrollHeight > window.innerHeight
@@ -39,11 +49,16 @@ export const DZXPortfolio: React.FC = () => {
       : null;
     world.setScrollElement(scroller);
 
-    // Track state transitions
+    // Track state transitions & camera landing
     world.transitionManager.onEnterStart = () => setIsInPortal(true);
-    world.transitionManager.onExitComplete = () => setIsInPortal(false);
+    world.onPortalLanded = () => setIsPortalLanded(true);
+    world.transitionManager.onExitStart = () => setIsPortalLanded(false);
+    world.transitionManager.onExitComplete = () => {
+      setIsInPortal(false);
+      setIsPortalLanded(false);
+    };
 
-    // Track Presence Recognition state
+    // Track Presence Recognition state (discrete updates only)
     world.scenePortal.onPresenceChange = (state) => {
       setPresenceState(state);
     };
@@ -118,8 +133,9 @@ export const DZXPortfolio: React.FC = () => {
 
   const handleExitPortal = useCallback(() => {
     if (!worldRef.current) return;
-    // Rapidly drop HUD
+    // Rapidly drop HUD and Presence indicators
     setIsHUDVisible(false);
+    setIsPortalLanded(false);
     worldRef.current.exitXiaoZhaiOS();
 
     // Restore DOM overlay once camera approaches original projects track
@@ -191,9 +207,10 @@ export const DZXPortfolio: React.FC = () => {
         isFocused={presenceState.isFocused}
       />
 
-      <PresenceIntro isInPortal={isInPortal} />
+      <PresenceIntro isPortalLanded={isPortalLanded} />
 
       <NodeDescriptor
+        ref={descriptorRef}
         hoveredNode={presenceState.hoveredNode}
         selectedNode={presenceState.selectedNode}
       />
