@@ -26,14 +26,15 @@
    - **主世界空间隔离**：普通滚动时 XiaoZhaiOS 保持静默待命，彻底消除与 Chapter 3 的视觉冲突。
    - 空间内支持 **360° 球面阻尼自由旋转拖拽、滚轮焦距缩放 (FOV)、鼠标光影感应与点击背景平滑倒流返回**。
 
-4. **存在识别交互系统 (Presence Recognition · 2.3.0 / 2.3.1 Final)**：
+4. **存在识别交互系统 (Presence Recognition · 2.3.0 ~ 2.3.2)**：
    - **“Interaction discovered, not announced.”** 极度克制、冷静的数字装置艺术级感知语言。
-   - **形状匹配八面体交互代理 (Shape-Matched Polygon Hit Proxy · 2.3.1 Final)**：彻底弃用球形代理与桌面近距兜底（移除桌面 20px fallback），为四个认知小多边形（上方 `CONTEXT`、左侧 `RAW`、右侧 `SELF`、下方 `LONG_TERM`）绑定与视觉几何完全重合且旋转同步的 `OctahedronGeometry(0.36)` 精准几何代理（仅外扩 12%），实现肉眼“触及几何表面即响应（I touched the object）”的精准交互质感；仅在触摸设备放宽代理缩放（1.35x）。
-   - **四小多边形唯一定位与 Core 语义解耦**：中央大 Core 代表记忆系统整体，仅响应微妙的菲涅尔表面微光接触高光，绝不唤出描述器、不启动驻留、不触发选中；四个外围小多边形作为唯一可读取认知单元，承载描述器唤出、光标聚焦（0.72x）与驻留传导。
+   - **中央二十面体核心感知 (Core Polyhedron Recognition · 2.3.2)**：激活中央正二十面体（Icosahedron）的顶级存在识别，鼠标悬浮时光标聚焦收紧至 0.72x 并呼出专属信息卡（`KERNEL / 00 · XIAOZHAI KERNEL`），支持空间点击选中与背景平滑退出。
+   - **外围八面体交互代理包络 (Calibrated Octahedron Hit Proxy · 2.3.2)**：为四个认知小多面体（上方 `CONTEXT`、左侧 `RAW`、右侧 `SELF`、下方 `LONG_TERM`）绑定与视觉自转完全同步的 `OctahedronGeometry(0.48)` 精准几何代理，100% 贴合菱形轮廓并彻底消除自转倾斜面的缝隙漏光。
    - **单通道射线检测与三维遮挡剔除 (Single-pass Raycast & Depth Occlusion)**：Core 与四个节点代理合并入单次有序射线检测；若 Core 位于前方（距离更近），其后方节点被物理遮挡，无法穿透拾取。
-   - **消除渲染关键路径对象开销 (Low-Allocation Hot Paths · 2.3.1 Final)**：预分配射线交点复用数组、遮挡演算向量与相机插值向量，标量化 `applyToCamera()` 返回值，消除渲染主循环中的应用层重复对象分配。
-   - **60fps React 渲染桥断开 (Direct DOM Transform · 2.3.1 Final)**：光标阻尼平滑与描述器跟随完全由 DOM Ref `transform` 驱动，仅在离散状态（`hoveredNodeId`, `selectedNodeId`, `isFocused`, `isCoreHit`）变化时触发 React 更新。
-   - **落地时序与微引导线自适应边缘对齐 (Adaptive Placement · 2.3.1 Final)**：微提示文本严格在镜头落位完成（`isPortalLanded`）后 600ms 静默浮现；节点描述器根据屏幕象限智能翻转（左/右、上/下），避让顶部 HUD 并避免屏幕边缘截断。
+   - **主渲染循环严格时序对齐 (Zero Frame-Lag · 2.3.2)**：重构主更新顺序（相机平滑插值 → `lookAt` → `camera.updateMatrixWorld()` → 几何体位姿自转 → `scenePortal.update()`），保证射线投射与当前帧物理画面毫秒级绝对同步。
+   - **消除渲染关键路径对象开销 (Low-Allocation Hot Paths)**：预分配射线交点复用数组、遮挡演算向量与相机插值向量，标量化 `applyToCamera()` 返回值，消除渲染主循环中的应用层重复对象分配。
+   - **60fps React 渲染桥断开 (Direct DOM Transform)**：光标阻尼平滑与描述器跟随完全由 DOM Ref `transform` 驱动，仅在离散状态（`hoveredNodeId`, `selectedNodeId`, `isFocused`, `isCoreHit`）变化时触发 React 更新。
+   - **落地时序与微引导线自适应边缘对齐 (Adaptive Placement)**：微提示文本严格在镜头落位完成（`isPortalLanded`）后 600ms 静默浮现；节点描述器根据屏幕象限智能翻转（左/右、上/下），避让顶部 HUD 并避免屏幕边缘截断。
 
 5. **DOM 与 3D 深度绑定 (Spatial Position-Driven Reveal)**：
    - 各章节文本与卡片依据摄像机在 3D 空间中的深度进度被“发现”，适时淡入、对齐、漂移与退场。
