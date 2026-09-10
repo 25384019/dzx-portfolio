@@ -5,6 +5,10 @@ import { ScrollRail } from './components/ScrollRail';
 import { MediaCard } from './components/MediaCard';
 import { PortalHUD } from './components/PortalHUD';
 import { ChapterSection } from './components/ChapterSection';
+import { PresenceCursor } from './components/PresenceCursor';
+import { PresenceIntro } from './components/PresenceIntro';
+import { NodeDescriptor } from './components/NodeDescriptor';
+import { PresenceState } from './experience/ScenePortal';
 
 export const DZXPortfolio: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -13,6 +17,13 @@ export const DZXPortfolio: React.FC = () => {
   const [activeChapter, setActiveChapter] = useState(0);
   const [isInPortal, setIsInPortal] = useState(false);
   const [isHUDVisible, setIsHUDVisible] = useState(false);
+  const [presenceState, setPresenceState] = useState<PresenceState>({
+    isFocused: false,
+    isCoreHit: false,
+    hoveredNode: null,
+    selectedNode: null,
+    dwellProgress: 0,
+  });
 
   // Initialize Three.js World
   useEffect(() => {
@@ -31,6 +42,11 @@ export const DZXPortfolio: React.FC = () => {
     // Track state transitions
     world.transitionManager.onEnterStart = () => setIsInPortal(true);
     world.transitionManager.onExitComplete = () => setIsInPortal(false);
+
+    // Track Presence Recognition state
+    world.scenePortal.onPresenceChange = (state) => {
+      setPresenceState(state);
+    };
 
     // Initial measurement
     const measureScroll = () => {
@@ -168,6 +184,19 @@ export const DZXPortfolio: React.FC = () => {
 
       {/* Side Media Card */}
       <MediaCard isInPortal={isInPortal} />
+
+      {/* XiaoZhaiOS Presence Recognition Subsystem */}
+      <PresenceCursor
+        isVisible={isInPortal && isHUDVisible}
+        isFocused={presenceState.isFocused}
+      />
+
+      <PresenceIntro isInPortal={isInPortal} />
+
+      <NodeDescriptor
+        hoveredNode={presenceState.hoveredNode}
+        selectedNode={presenceState.selectedNode}
+      />
 
       {/* XiaoZhaiOS Portal HUD (Top Return & Bottom Hints) */}
       <PortalHUD

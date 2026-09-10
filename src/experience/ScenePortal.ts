@@ -1,4 +1,24 @@
 import * as THREE from 'three';
+import { XiaoZhaiOSWorld, MemoryNode } from '../scenes/XiaoZhaiOSWorld';
+
+export interface PresenceNodeInfo {
+  id: string;
+  label: string;
+  sublabel: string;
+  screenX: number;
+  screenY: number;
+  color: number;
+  isSelected: boolean;
+  isHovered: boolean;
+}
+
+export interface PresenceState {
+  isFocused: boolean;
+  isCoreHit: boolean;
+  hoveredNode: PresenceNodeInfo | null;
+  selectedNode: PresenceNodeInfo | null;
+  dwellProgress: number;
+}
 
 export class ScenePortal {
   public isInPortal: boolean = false;
@@ -12,6 +32,10 @@ export class ScenePortal {
   public zoom: number = 0;
   public targetZoom: number = 0;
 
+  // Camera Target Shift (Subtle focus toward selected node)
+  public currentTargetOffset: THREE.Vector3 = new THREE.Vector3();
+  public desiredTargetOffset: THREE.Vector3 = new THREE.Vector3();
+
   // Internal pointer tracking
   public isPointerDown: boolean = false;
   private lastPointerX: number = 0;
@@ -21,7 +45,28 @@ export class ScenePortal {
   private downTime: number = 0;
   private totalDragDist: number = 0;
 
+  // Normalized pointer coordinates (-1 to 1) for raycasting
+  private pointerNDC: THREE.Vector2 = new THREE.Vector2(-999, -999);
+  private pointerClient: THREE.Vector2 = new THREE.Vector2(-999, -999);
+
+  // Raycasting (Zero hot-loop allocations)
+  private raycaster: THREE.Raycaster = new THREE.Raycaster();
+  private tempProjVec: THREE.Vector3 = new THREE.Vector3();
+
+  // Interaction State
+  public hoveredNodeId: string | null = null;
+  public selectedNodeId: string | null = null;
+  private isCoreHovered: boolean = false;
+  private dwellTimer: number = 0;
+  private readonly dwellThreshold: number = 1.1; // 1.1s dwell
+
+  // World & Camera references
+  public xiaoZhaiOSWorld: XiaoZhaiOSWorld | null = null;
+  public camera: THREE.Camera | null = null;
+
+  // Callbacks
   public onBackgroundClick?: () => void;
+  public onPresenceChange?: (state: PresenceState) => void;
 
   constructor() {}
 
@@ -29,12 +74,21 @@ export class ScenePortal {
     this.isInPortal = true;
     this.activePortalId = portalId;
     this.resetControls();
+    if (this.xiaoZhaiOSWorld) {
+      this.xiaoZhaiOSWorld.triggerPresenceScan();
+    }
   }
 
   public exit(): void {
     this.isInPortal = false;
     this.activePortalId = '';
     this.resetControls();
+    if (this.xiaoZhaiOSWorld) {
+      this.xiaoZhaiOSWorld.hoveredNodeId = null;
+      this.xiaoZhaiOSWorld.selectedNodeId = null;
+      this.xiaoZhaiOSWorld.setCoreHit(null);
+      this.xiaoZhaiOSWorld.setDwellConnection(null, 0);
+    }
   }
 
   public resetControls(): void {
@@ -46,11 +100,16 @@ export class ScenePortal {
     this.targetZoom = 0;
     this.isPointerDown = false;
     this.totalDragDist = 0;
+    this.hoveredNodeId = null;
+    this.selectedNodeId = null;
+    this.isCoreHovered = false;
+    this.dwellTimer = 0;
+    this.currentTargetOffset.set(0, 0, 0);
+    this.desiredTargetOffset.set(0, 0, 0);
   }
 
   public handlePointerDown(e: MouseEvent | TouchEvent | PointerEvent): void {
     if (!this.isInPortal) return;
-    // If clicked on an interactive button or control, ignore drag
     const target = e.target as HTMLElement | null;
     if (target && target.closest('button, a, input, select, textarea')) {
       return;
@@ -69,24 +128,27 @@ export class ScenePortal {
   }
 
   public handlePointerMove(e: MouseEvent | TouchEvent | PointerEvent, width: number, height: number): void {
-    if (!this.isPointerDown || !this.isInPortal) return;
+    if (!this.isInPortal) return;
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
 
-    const dx = clientX - this.lastPointerX;
-    const dy = clientY - this.lastPointerY;
+    this.pointerClient.set(clientX, clientY);
+    this.pointerNDC.x = (clientX / width) * 2 - 1;
+    this.pointerNDC.y = -(clientY / height) * 2 + 1;
 
-    this.lastPointerX = clientX;
-    this.lastPointerY = clientY;
-    this.totalDragDist += Math.hypot(dx, dy);
+    if (this.isPointerDown) {
+      const dx = clientX - this.lastPointerX;
+      const dy = clientY - this.lastPointerY;
+      this.lastPointerX = clientX;
+      this.lastPointerY = clientY;
+      this.totalDragDist += Math.hypot(dx, dy);
 
-    // Dynamic rotation sensitivity (full screen width ≈ 360 degree orbit)
-    const sensX = (Math.PI * 2.2) / Math.max(1, width);
-    const sensY = (Math.PI * 1.5) / Math.max(1, height);
+      const sensX = (Math.PI * 2.2) / Math.max(1, width);
+      const sensY = (Math.PI * 1.5) / Math.max(1, height);
 
-    this.targetYaw -= dx * sensX;
-    // Pitch clamped between -0.75 and 0.75 radians (~±43 deg) to prevent flipping
-    this.targetPitch = THREE.MathUtils.clamp(this.targetPitch + dy * sensY, -0.75, 0.75);
+      this.targetYaw -= dx * sensX;
+      this.targetPitch = THREE.MathUtils.clamp(this.targetPitch + dy * sensY, -0.75, 0.75);
+    }
   }
 
   public handlePointerUp(e: MouseEvent | TouchEvent | PointerEvent): void {
@@ -99,11 +161,38 @@ export class ScenePortal {
     const dist = Math.hypot(clientX - this.downX, clientY - this.downY);
     const elapsed = performance.now() - this.downTime;
 
-    // Clean background click to smoothly exit (short click under 350ms, moved < 10px)
-    if (dist < 10 && this.totalDragDist < 10 && elapsed < 350 && this.isInPortal) {
+    // Clean click detection (< 12px drag, < 350ms duration)
+    if (dist < 12 && this.totalDragDist < 12 && elapsed < 350 && this.isInPortal) {
       const target = e.target as HTMLElement | null;
-      if (!target || !target.closest('button, a')) {
-        this.onBackgroundClick?.();
+      if (target && target.closest('button, a')) return;
+
+      if (this.hoveredNodeId) {
+        // Clicked on a Memory Node: toggle spatial selection
+        if (this.selectedNodeId === this.hoveredNodeId) {
+          this.selectedNodeId = null;
+          this.desiredTargetOffset.set(0, 0, 0);
+        } else {
+          this.selectedNodeId = this.hoveredNodeId;
+          const node = this.xiaoZhaiOSWorld?.getMemoryNodes().find(n => n.id === this.selectedNodeId);
+          if (node) {
+            // Subtle shift of camera target toward node (max 0.35 unit shift)
+            this.desiredTargetOffset.copy(node.position).multiplyScalar(0.22);
+          }
+        }
+        if (this.xiaoZhaiOSWorld) {
+          this.xiaoZhaiOSWorld.selectedNodeId = this.selectedNodeId;
+        }
+      } else {
+        // Clicked on background: if node is selected, unselect it; otherwise exit portal
+        if (this.selectedNodeId) {
+          this.selectedNodeId = null;
+          this.desiredTargetOffset.set(0, 0, 0);
+          if (this.xiaoZhaiOSWorld) {
+            this.xiaoZhaiOSWorld.selectedNodeId = null;
+          }
+        } else {
+          this.onBackgroundClick?.();
+        }
       }
     }
   }
@@ -115,6 +204,9 @@ export class ScenePortal {
   }
 
   public update(dt: number): void {
+    if (!this.isInPortal) return;
+
+    // 1. Orbit & Zoom damping
     const rotSpeed = 7.5;
     const rotFactor = dt > 0 ? 1 - Math.exp(-rotSpeed * dt) : 1;
     this.yaw += (this.targetYaw - this.yaw) * rotFactor;
@@ -123,10 +215,111 @@ export class ScenePortal {
     const zoomSpeed = 6.0;
     const zoomFactor = dt > 0 ? 1 - Math.exp(-zoomSpeed * dt) : 1;
     this.zoom += (this.targetZoom - this.zoom) * zoomFactor;
+
+    // 2. Camera target shift damping toward selected node
+    this.currentTargetOffset.lerp(this.desiredTargetOffset, 0.08);
+
+    // 3. Continuous Raycasting & Presence Recognition
+    this.updatePresenceRaycasting(dt);
+  }
+
+  private updatePresenceRaycasting(dt: number): void {
+    if (!this.camera || !this.xiaoZhaiOSWorld) return;
+
+    this.raycaster.setFromCamera(this.pointerNDC, this.camera);
+
+    // Test Core surface raycast
+    const coreMesh = this.xiaoZhaiOSWorld.getCoreMesh();
+    const coreIntersects = this.raycaster.intersectObject(coreMesh, false);
+    if (coreIntersects.length > 0) {
+      this.isCoreHovered = true;
+      this.xiaoZhaiOSWorld.setCoreHit(coreIntersects[0].point);
+    } else {
+      this.isCoreHovered = false;
+      this.xiaoZhaiOSWorld.setCoreHit(null);
+    }
+
+    // Test Memory Nodes
+    const nodes = this.xiaoZhaiOSWorld.getMemoryNodes();
+    let hitNode: MemoryNode | null = null;
+
+    for (const node of nodes) {
+      const nodeIntersects = this.raycaster.intersectObject(node.mesh, true);
+      if (nodeIntersects.length > 0) {
+        hitNode = node;
+        break;
+      }
+    }
+
+    // Proximity check in screen space if raycast was a near-miss
+    if (!hitNode) {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      for (const node of nodes) {
+        node.mesh.getWorldPosition(this.tempProjVec);
+        this.tempProjVec.project(this.camera);
+        const sx = (this.tempProjVec.x * 0.5 + 0.5) * width;
+        const sy = (-this.tempProjVec.y * 0.5 + 0.5) * height;
+        const dist = Math.hypot(this.pointerClient.x - sx, this.pointerClient.y - sy);
+        if (dist < 44 && this.tempProjVec.z < 1) { // 44px near-focus radius
+          hitNode = node;
+          break;
+        }
+      }
+    }
+
+    this.hoveredNodeId = hitNode ? hitNode.id : null;
+    this.xiaoZhaiOSWorld.hoveredNodeId = this.hoveredNodeId;
+
+    // Dwell timer management
+    if (this.hoveredNodeId) {
+      this.dwellTimer += dt;
+      const dwellProg = THREE.MathUtils.clamp((this.dwellTimer - 0.4) / (this.dwellThreshold - 0.4), 0, 1);
+      this.xiaoZhaiOSWorld.setDwellConnection(this.hoveredNodeId, dwellProg);
+    } else {
+      this.dwellTimer = 0;
+      this.xiaoZhaiOSWorld.setDwellConnection(null, 0);
+    }
+
+    // Broadcast presence update to UI
+    const isFocused = this.isCoreHovered || this.hoveredNodeId !== null;
+    const dwellProgress = THREE.MathUtils.clamp(this.dwellTimer / this.dwellThreshold, 0, 1);
+
+    const getScreenInfo = (targetId: string | null): PresenceNodeInfo | null => {
+      if (!targetId) return null;
+      const n = nodes.find(item => item.id === targetId);
+      if (!n || !this.camera) return null;
+
+      n.mesh.getWorldPosition(this.tempProjVec);
+      this.tempProjVec.project(this.camera);
+      const sx = (this.tempProjVec.x * 0.5 + 0.5) * window.innerWidth;
+      const sy = (-this.tempProjVec.y * 0.5 + 0.5) * window.innerHeight;
+
+      return {
+        id: n.id,
+        label: n.label,
+        sublabel: n.sublabel,
+        screenX: sx,
+        screenY: sy,
+        color: n.color,
+        isSelected: this.selectedNodeId === n.id,
+        isHovered: this.hoveredNodeId === n.id,
+      };
+    };
+
+    if (this.onPresenceChange) {
+      this.onPresenceChange({
+        isFocused,
+        isCoreHit: this.isCoreHovered,
+        hoveredNode: getScreenInfo(this.hoveredNodeId),
+        selectedNode: getScreenInfo(this.selectedNodeId),
+        dwellProgress,
+      });
+    }
   }
 
   /**
-   * Applies 360-degree spherical orbit, parallax, and zoom to camera in XiaoZhaiOS space.
+   * Applies 360-degree spherical orbit, subtle node-shift focus, and zoom to camera.
    */
   public applyToCamera(
     outP: THREE.Vector3,
@@ -138,34 +331,28 @@ export class ScenePortal {
     blendFactor: number = 1
   ): { fov: number } {
     const k = blendFactor;
-    // XiaoZhaiOS Memory Core center
     const center = new THREE.Vector3(0.5, 2.2, -14.0);
     const baseDist = 7.0;
     const currentDist = THREE.MathUtils.clamp(baseDist + this.zoom, 3.2, 12.5);
 
-    // Organic ambient breathing motion
     const breatheX = Math.sin(time * 0.7) * 0.08 * k;
     const breatheY = Math.cos(time * 0.5) * 0.05 * k;
 
-    // Spherical position calculated from yaw and pitch
     const cosPitch = Math.cos(this.pitch);
     const orbX = center.x + Math.sin(this.yaw) * cosPitch * currentDist;
     const orbY = center.y + Math.sin(this.pitch) * currentDist;
     const orbZ = center.z + Math.cos(this.yaw) * cosPitch * currentDist;
 
-    // Blend from flight path into orbital position
-    outP.x = THREE.MathUtils.lerp(outP.x, orbX + mx * 0.35 + breatheX, k);
-    outP.y = THREE.MathUtils.lerp(outP.y, orbY + my * 0.22 + breatheY, k);
-    outP.z = THREE.MathUtils.lerp(outP.z, orbZ, k);
+    outP.x = THREE.MathUtils.lerp(outP.x, orbX + mx * 0.35 + breatheX + this.currentTargetOffset.x, k);
+    outP.y = THREE.MathUtils.lerp(outP.y, orbY + my * 0.22 + breatheY + this.currentTargetOffset.y, k);
+    outP.z = THREE.MathUtils.lerp(outP.z, orbZ + this.currentTargetOffset.z, k);
 
-    // Look target locks onto the neural crystal center with subtle parallax
-    outT.x = THREE.MathUtils.lerp(outT.x, center.x + mx * 0.25 + breatheX * 0.5, k);
-    outT.y = THREE.MathUtils.lerp(outT.y, center.y + my * 0.16 + breatheY * 0.5, k);
-    outT.z = THREE.MathUtils.lerp(outT.z, center.z, k);
+    outT.x = THREE.MathUtils.lerp(outT.x, center.x + mx * 0.25 + breatheX * 0.5 + this.currentTargetOffset.x, k);
+    outT.y = THREE.MathUtils.lerp(outT.y, center.y + my * 0.16 + breatheY * 0.5 + this.currentTargetOffset.y, k);
+    outT.z = THREE.MathUtils.lerp(outT.z, center.z + this.currentTargetOffset.z, k);
 
     return {
       fov: outFov + this.zoom * 1.5 * k,
     };
   }
 }
-

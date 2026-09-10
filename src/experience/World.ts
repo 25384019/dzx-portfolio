@@ -103,6 +103,8 @@ export class World {
     this.interestsScene = new InterestsScene();
     this.philosophyScene = new PhilosophyScene();
     this.xiaoZhaiOSWorld = new XiaoZhaiOSWorld();
+    this.scenePortal.xiaoZhaiOSWorld = this.xiaoZhaiOSWorld;
+    this.scenePortal.camera = this.cameraRig.camera;
 
     this.scene.add(this.homeScene.group);
     this.scene.add(this.aboutScene.group);

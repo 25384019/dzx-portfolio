@@ -45,18 +45,14 @@ html, body, #root {
   }
 }
 
-/* XiaoZhaiOS Portal Drag Cursor */
-body.in-portal-mode {
-  cursor: grab;
+/* XiaoZhaiOS Portal Presence Recognition Mode */
+body.in-portal-mode,
+body.in-portal-mode * {
+  cursor: none !important;
   user-select: none;
 }
-body.in-portal-mode.is-dragging {
-  cursor: grabbing !important;
-}
-body.in-portal-mode canvas {
-  cursor: grab;
-}
-body.in-portal-mode.is-dragging canvas {
-  cursor: grabbing !important;
+body.in-portal-mode button,
+body.in-portal-mode a {
+  cursor: pointer !important;
 }
 
