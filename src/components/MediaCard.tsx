@@ -2,10 +2,17 @@ import React, { useState } from 'react';
 
 interface MediaCardProps {
   isInPortal: boolean;
+  scrollProgress?: number;
 }
 
-export const MediaCard: React.FC<MediaCardProps> = ({ isInPortal }) => {
+export const MediaCard: React.FC<MediaCardProps> = ({ isInPortal, scrollProgress = 0 }) => {
   const [isHovered, setIsHovered] = useState(false);
+
+  // Smoothly fade out as camera approaches Chapter 5 Terminal Horizon (progress 4.45 -> 4.8)
+  const contactFade = Math.min(Math.max((scrollProgress - 4.45) / 0.35, 0), 1);
+  const baseOpacity = isHovered ? 1 : 0.68;
+  const finalOpacity = (1.0 - contactFade) * (isInPortal ? 0 : baseOpacity);
+  const isHidden = finalOpacity < 0.04;
 
   return (
     <aside
@@ -14,8 +21,9 @@ export const MediaCard: React.FC<MediaCardProps> = ({ isInPortal }) => {
       onMouseLeave={() => setIsHovered(false)}
       style={{
         position: 'fixed',
-        bottom: 38,
-        right: 44,
+        // Stacked neatly 16px above DZX · SIGNAL [H] (bottom: 24, right: 24) without overlapping
+        bottom: 74,
+        right: 24,
         zIndex: 40,
         // Reduced size by ~14% from original 280px to 240px
         width: 240,
@@ -28,9 +36,13 @@ export const MediaCard: React.FC<MediaCardProps> = ({ isInPortal }) => {
         boxShadow: isHovered
           ? '0 16px 36px rgba(0, 0, 0, 0.75), 0 0 16px rgba(110, 158, 174, 0.25)'
           : '0 10px 24px rgba(0, 0, 0, 0.55)',
-        transform: isInPortal ? 'translate3d(0, 80px, 0)' : 'translate3d(0, 0, 0)',
-        opacity: isInPortal ? 0 : isHovered ? 1 : 0.68,
-        pointerEvents: isInPortal ? 'none' : 'auto',
+        transform: isInPortal
+          ? 'translate3d(0, 80px, 0)'
+          : contactFade > 0.1
+          ? `translate3d(0, ${(contactFade * 20).toFixed(1)}px, 0)`
+          : 'translate3d(0, 0, 0)',
+        opacity: finalOpacity,
+        pointerEvents: isHidden ? 'none' : 'auto',
         transition: 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
         display: 'flex',
         flexDirection: 'column',

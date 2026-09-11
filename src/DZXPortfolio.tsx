@@ -16,6 +16,7 @@ export const DZXPortfolio: React.FC = () => {
   const descriptorRef = useRef<HTMLDivElement>(null);
 
   const [activeChapter, setActiveChapter] = useState(0);
+  const [scrollProgress, setScrollProgress] = useState(0);
   const [isInPortal, setIsInPortal] = useState(false);
   const [isPortalLanded, setIsPortalLanded] = useState(false);
   const [isHUDVisible, setIsHUDVisible] = useState(false);
@@ -95,6 +96,7 @@ export const DZXPortfolio: React.FC = () => {
         const rawP = worldRef.current.scrollController.smoothProgress;
         const currentCh = Math.min(Math.max(Math.round(rawP), 0), 5);
         setActiveChapter(currentCh);
+        setScrollProgress(rawP);
       }
     }, 100);
     return () => clearInterval(interval);
@@ -208,7 +210,7 @@ export const DZXPortfolio: React.FC = () => {
       />
 
       {/* Side Media Card */}
-      <MediaCard isInPortal={isInPortal} />
+      <MediaCard isInPortal={isInPortal} scrollProgress={scrollProgress} />
 
       {/* XiaoZhaiOS Presence Recognition Subsystem */}
       <PresenceCursor

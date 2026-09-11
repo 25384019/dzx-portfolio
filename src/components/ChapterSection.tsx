@@ -645,10 +645,10 @@ export const ChapterSection: React.FC<ChapterSectionProps> = ({ onExploreXiaoZha
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'center',
-          padding: '120px 8vw 80px 8vw',
+          padding: '80px 8vw 80px 8vw',
         }}
       >
-        <div className="dzx-chapter-content" data-ch="5" style={{ maxWidth: 840, willChange: 'transform, opacity' }}>
+        <div className="dzx-chapter-content" data-ch="5" style={{ maxWidth: 720, willChange: 'transform, opacity' }}>
           <div
             style={{
               fontSize: 10,
@@ -656,7 +656,7 @@ export const ChapterSection: React.FC<ChapterSectionProps> = ({ onExploreXiaoZha
               letterSpacing: '0.22em',
               color: '#6e9eae',
               textTransform: 'uppercase',
-              marginBottom: 16,
+              marginBottom: 18,
             }}
           >
             CHAPTER 05 — TERMINAL HORIZON
@@ -665,12 +665,12 @@ export const ChapterSection: React.FC<ChapterSectionProps> = ({ onExploreXiaoZha
           <h2
             style={{
               fontFamily: "'Onest', system-ui, sans-serif",
-              fontSize: 'clamp(36px, 5.5vw, 68px)',
+              fontSize: 'clamp(38px, 5.8vw, 72px)',
               fontWeight: 800,
               lineHeight: 1.05,
-              letterSpacing: '-0.02em',
+              letterSpacing: '-0.025em',
               color: '#dfe7e0',
-              margin: '0 0 24px 0',
+              margin: '0 0 28px 0',
               textTransform: 'uppercase',
             }}
           >
@@ -680,28 +680,18 @@ export const ChapterSection: React.FC<ChapterSectionProps> = ({ onExploreXiaoZha
 
           <p
             style={{
-              fontSize: 'clamp(16px, 1.8vw, 20px)',
-              lineHeight: 1.7,
-              color: '#dfe7e0',
+              fontSize: 'clamp(16px, 1.8vw, 22px)',
+              lineHeight: 1.75,
+              color: 'rgba(223, 231, 224, 0.85)',
               fontWeight: 400,
-              marginBottom: 10,
-              letterSpacing: '0.02em',
+              marginBottom: 40,
+              letterSpacing: '0.015em',
+              maxWidth: 580,
             }}
           >
-            关于 AI、软件、数字体验，或者一个值得实现的想法。
-          </p>
-
-          <p
-            style={{
-              fontSize: 13,
-              lineHeight: 1.6,
-              color: 'rgba(223, 231, 224, 0.55)',
-              fontWeight: 300,
-              marginBottom: 36,
-              letterSpacing: '0.04em',
-            }}
-          >
-            Available for AI, software architecture, digital experiences, or an idea worth bringing to life.
+            关于人工智能、软件、数字体验，
+            <br />
+            或者一个值得实现的想法。
           </p>
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
@@ -726,6 +716,16 @@ export const ChapterSection: React.FC<ChapterSectionProps> = ({ onExploreXiaoZha
                   textDecoration: 'none',
                   fontWeight: 600,
                   transition: 'all 0.25s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(110, 158, 174, 0.18)';
+                  e.currentTarget.style.borderColor = '#6e9eae';
+                  e.currentTarget.style.transform = 'scale(1.03)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)';
+                  e.currentTarget.style.borderColor = 'rgba(223, 231, 224, 0.2)';
+                  e.currentTarget.style.transform = 'scale(1)';
                 }}
               >
                 {btn.label} ↗

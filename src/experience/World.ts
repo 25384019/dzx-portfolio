@@ -8,6 +8,7 @@ import { AboutScene } from '../scenes/AboutScene';
 import { ProjectsScene } from '../scenes/ProjectsScene';
 import { InterestsScene } from '../scenes/InterestsScene';
 import { PhilosophyScene } from '../scenes/PhilosophyScene';
+import { ContactScene } from '../scenes/ContactScene';
 import { XiaoZhaiOSWorld } from '../scenes/XiaoZhaiOSWorld';
 
 export class World {
@@ -28,6 +29,7 @@ export class World {
   public projectsScene: ProjectsScene;
   public interestsScene: InterestsScene;
   public philosophyScene: PhilosophyScene;
+  public contactScene: ContactScene;
   public xiaoZhaiOSWorld: XiaoZhaiOSWorld;
 
   // Global ambient particle field with decrescendo into CONTACT
@@ -110,6 +112,7 @@ export class World {
     this.projectsScene = new ProjectsScene();
     this.interestsScene = new InterestsScene();
     this.philosophyScene = new PhilosophyScene();
+    this.contactScene = new ContactScene();
     this.xiaoZhaiOSWorld = new XiaoZhaiOSWorld();
     this.scenePortal.xiaoZhaiOSWorld = this.xiaoZhaiOSWorld;
     this.scenePortal.camera = this.cameraRig.camera;
@@ -119,6 +122,7 @@ export class World {
     this.scene.add(this.projectsScene.group);
     this.scene.add(this.interestsScene.group);
     this.scene.add(this.philosophyScene.group);
+    this.scene.add(this.contactScene.group);
     this.scene.add(this.xiaoZhaiOSWorld.group);
 
     // 6. Global Ambient Particle Corridor with Decrescendo
@@ -305,6 +309,7 @@ export class World {
     this.projectsScene.update(this.clock, dt, smoothP);
     this.interestsScene.update(this.clock, dt, smoothP, this.cameraRig.mx, this.cameraRig.my);
     this.philosophyScene.update(this.clock, dt, smoothP);
+    this.contactScene.update(this.clock, dt, smoothP);
     this.xiaoZhaiOSWorld.update(this.clock, dt, this.scenePortal.isInPortal, this.transitionManager.progress);
     this.updateGlobalParticles(smoothP, this.clock);
 
@@ -326,7 +331,7 @@ export class World {
   };
 
   private buildGlobalParticleField(): void {
-    const count = 480;
+    const count = 380;
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
 
@@ -370,14 +375,14 @@ export class World {
     // HOME -> PROJECTS -> INTERESTS (progress <= 3.2): 100% density/opacity
     // PHILOSOPHY (progress 3.2 -> 4.2): drops from 1.0 to 0.60
     // CONTACT entrance (progress 4.2 -> 4.7): drops from 0.60 to 0.25
-    // CONTACT terminal horizon (progress 4.7 -> 5.0): drops from 0.25 to 0.08
+    // CONTACT terminal horizon (progress 4.7 -> 5.0): drops from 0.25 to ~3.5%
     let particleFactor = 1.0;
     if (progress > 3.2 && progress <= 4.2) {
       particleFactor = THREE.MathUtils.lerp(1.0, 0.6, (progress - 3.2) / 1.0);
     } else if (progress > 4.2 && progress <= 4.7) {
       particleFactor = THREE.MathUtils.lerp(0.6, 0.25, (progress - 4.2) / 0.5);
     } else if (progress > 4.7) {
-      particleFactor = THREE.MathUtils.lerp(0.25, 0.08, Math.min((progress - 4.7) / 0.3, 1.0));
+      particleFactor = THREE.MathUtils.lerp(0.25, 0.035, Math.min((progress - 4.7) / 0.3, 1.0));
     }
 
     (this.globalParticles.material as THREE.PointsMaterial).opacity = 0.75 * particleFactor;
@@ -464,6 +469,7 @@ export class World {
     this.projectsScene.dispose();
     this.interestsScene.dispose();
     this.philosophyScene.dispose();
+    this.contactScene.dispose();
     this.xiaoZhaiOSWorld.dispose();
 
     if (this.globalParticles) {
