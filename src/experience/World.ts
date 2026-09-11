@@ -331,7 +331,7 @@ export class World {
   };
 
   private buildGlobalParticleField(): void {
-    const count = 380;
+    const count = 480;
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
 
