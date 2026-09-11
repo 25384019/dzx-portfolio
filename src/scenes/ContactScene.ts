@@ -1,53 +1,205 @@
 import * as THREE from 'three';
 
 /**
- * ContactScene — Terminal Horizon (Chapter 05)
+ * ContactScene — Terminal Gate / Apocalyptic Revelation (Chapter 05)
  *
- * Visual Concept: "The edge of the digital world."
- * - Super-fine horizontal line on the right half of space with subtle perspective depth.
- * - Near-to-far brightness/opacity gradient (0.22 -> 0.022) so the right edge softly dissolves into space.
- * - 4 micro luminous beacon points with non-uniform spacing, size attenuation, and opacity gradient.
- * - Periodic gentle Sakura Pink pulse wave (~4.5s cycle) across mid-beacons.
- * - Ultra-low opacity, zero polyhedrons, zero HUD, zero node networks.
- * - low-allocation update path.
+ * Architecture:
+ * 1. Structural Frame: Dual-layer rectangular ribbon frame (outer: 1.0, inner: 0.92, Z offset -0.022)
+ * 2. Revelation Atmosphere Plane: Local quad PlaneGeometry with custom ShaderMaterial
+ *    - Box SDF outer halo
+ *    - Gate interior mask
+ *    - Gentle drifting haze (frozen when reduced-motion)
+ *    - Central vertical descending light beam
+ *    - ~15.5s low-frequency revelation pulse (Sakura Pink tint)
+ *    - Pointer proximity smooth hover boost (+6% brightness, 0 spatial displacement)
+ * 3. Faint Ground Horizon Datum: Ultra-quiet spatial reference line at base
+ *
+ * Performance:
+ * - low-allocation update path (zero per-frame allocations)
+ * - Added draw calls: <= 3
+ * - Visible vertices: < 100
  */
+
+const GATE_VERT = `
+varying vec2 vUv;
+
+void main() {
+  vUv = uv;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}
+`;
+
+const GATE_FRAG = `
+precision highp float;
+
+uniform float uTime;
+uniform float uReveal;
+uniform float uHover;
+uniform float uMotion;
+uniform float uAspect;
+
+uniform vec3 uFrameColor;
+uniform vec3 uHaloColor;
+uniform vec3 uPulseColor;
+
+varying vec2 vUv;
+
+float sdBox(vec2 p, vec2 b) {
+  vec2 d = abs(p) - b;
+  return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
+}
+
+float insideBox(vec2 p, vec2 b, float aa) {
+  return 1.0 - smoothstep(-aa, aa, sdBox(p, b));
+}
+
+float boxFrame(vec2 p, vec2 b, float thickness, float aa) {
+  float outer = insideBox(p, b, aa);
+  float inner = insideBox(p, max(b - vec2(thickness), vec2(0.001)), aa);
+  return clamp(outer - inner, 0.0, 1.0);
+}
+
+void main() {
+  vec2 p = (vUv - 0.5) * vec2(uAspect, 1.0);
+
+  float aa = 0.0025;
+  vec2 outerSize = vec2(0.46 * uAspect, 0.47);
+  vec2 innerSize = outerSize * 0.92;
+
+  float frameOuter = boxFrame(p, outerSize, 0.0055, aa);
+  float frameInner = boxFrame(p, innerSize, 0.0030, aa);
+
+  // Local glow / halo near gate edge (replaces full-screen bloom)
+  float edgeDist = abs(sdBox(p, outerSize));
+  float halo = 1.0 - smoothstep(0.005, 0.055, edgeDist);
+
+  // Interior mask
+  float interior = insideBox(p, innerSize - vec2(0.012), 0.006);
+
+  // Extremely slow drifting haze (frozen when uMotion is 0)
+  float hazePhase = p.y * 10.0 + uTime * 0.12 * uMotion;
+  float haze = interior * (0.55 + 0.45 * sin(hazePhase)) * (0.65 + 0.35 * cos(p.x * 13.0));
+
+  // Central vertical descending light beam
+  float shaftX = exp(-36.0 * p.x * p.x);
+  float shaftY = smoothstep(-0.48, 0.12, p.y);
+  float shaft = shaftX * shaftY * interior;
+
+  // ~15.5s slow revelation pulse
+  float phase = 0.5 + 0.5 * sin(uTime * 0.405 * uMotion);
+  float pulse = smoothstep(0.84, 1.0, phase);
+
+  // Pointer proximity hover boost (max +6% brightness)
+  float hoverBoost = 1.0 + 0.06 * uHover;
+
+  vec3 color =
+    uFrameColor * frameOuter * hoverBoost +
+    uFrameColor * frameInner * 0.34 +
+    uHaloColor  * halo       * 0.13 +
+    uHaloColor  * haze       * 0.055 +
+    uFrameColor * shaft      * 0.09 +
+    uPulseColor * pulse      * halo * 0.055;
+
+  float alpha =
+    frameOuter * 0.72 +
+    frameInner * 0.24 +
+    halo       * 0.10 +
+    haze       * 0.050 +
+    shaft      * 0.085 +
+    pulse      * halo * 0.035;
+
+  alpha *= uReveal;
+
+  if (alpha < 0.003) discard;
+
+  gl_FragColor = vec4(color, clamp(alpha, 0.0, 0.82));
+}
+`;
+
 export class ContactScene {
   public group: THREE.Group = new THREE.Group();
 
-  // Terminal Horizon line & micro parallel guide
+  // Gate Group positioned in space
+  public gateGroup: THREE.Group = new THREE.Group();
+
+  // Unified Atmosphere & Frame Quad Mesh
+  private atmosphereMesh!: THREE.Mesh;
+  private atmosphereGeo!: THREE.PlaneGeometry;
+  private atmosphereMaterial!: THREE.ShaderMaterial;
+
+  // Faint Ground Horizon Datum
   private horizonLine!: THREE.Line;
-  private microGuideLine!: THREE.Line;
   private horizonGeo!: THREE.BufferGeometry;
-  private guideGeo!: THREE.BufferGeometry;
+  private horizonMaterial!: THREE.LineBasicMaterial;
 
-  // 4 Micro Horizon Beacon Points
-  private beaconPoints: THREE.Mesh[] = [];
-  private beaconMaterials: THREE.MeshBasicMaterial[] = [];
-  private beaconBaseColors: THREE.Color[] = [];
-  private pinkColor: THREE.Color = new THREE.Color(0xf2c8d0);
-  private cyanColor: THREE.Color = new THREE.Color(0x6e9eae);
-  private mistColor: THREE.Color = new THREE.Color(0xb4c8d8);
+  // Shader Uniforms
+  private uniforms = {
+    uTime: { value: 0 },
+    uReveal: { value: 0 },
+    uHover: { value: 0 },
+    uMotion: { value: 1.0 },
+    uAspect: { value: 1.34 / 3.08 },
+    uFrameColor: { value: new THREE.Color(0xb4c8d8) }, // Mist Blue
+    uHaloColor: { value: new THREE.Color(0x6e9eae) },  // Ice Cyan
+    uPulseColor: { value: new THREE.Color(0xf2c8d0) }, // Sakura Pink
+  };
 
-  // Pre-allocated scratch color for low-allocation lerp
-  private _tmpColor: THREE.Color = new THREE.Color();
+  // State
+  private hoverValue: number = 0;
+  private frozenTime: number = 0;
+  private reducedMotion: boolean = false;
+  private suspended: boolean = false;
 
   constructor() {
-    this.buildHorizonLines();
-    this.buildBeaconPoints();
+    this.buildGate();
+    this.buildGroundDatum();
+    this.group.add(this.gateGroup);
     this.group.visible = false;
   }
 
-  private buildHorizonLines(): void {
-    // Primary Terminal Horizon Line:
-    // Spans right half of the horizon (X: 0.1 -> 6.2, Y: 1.68 -> 1.64, Z: -29.6 -> -33.2)
-    // Very gentle perspective inclination (~4° on screen) with subtle recession into Z depth.
-    const segments = 32;
+  private buildGate(): void {
+    // Gate dimensions: aspect ~ 2.3:1, height 3.08 world units (~47 vh), width 1.34 world units
+    // Center positioned at [2.50, 2.40, -31.5] (X ~ 74 vw, Y ~ 50 vh at Chapter 05)
+    this.gateGroup.position.set(2.50, 2.40, -31.5);
+    this.gateGroup.rotation.y = -3.2 * (Math.PI / 180); // 3.2° yaw facing inward
+    this.gateGroup.rotation.x = 0.5 * (Math.PI / 180);  // 0.5° subtle pitch
+    this.gateGroup.rotation.z = 0;
+
+    const width = 1.34;
+    const height = 3.08;
+
+    // Revelation Atmosphere & Frame Quad (scale 1.08) -> 1 Draw Call, 4 Vertices
+    // Combines outer frame, inner frame, outer halo, interior haze, descending light, and pulse
+    const atmWidth = width * 1.08;
+    const atmHeight = height * 1.08;
+    this.atmosphereGeo = new THREE.PlaneGeometry(atmWidth, atmHeight);
+    this.uniforms.uAspect.value = atmWidth / atmHeight;
+
+    this.atmosphereMaterial = new THREE.ShaderMaterial({
+      vertexShader: GATE_VERT,
+      fragmentShader: GATE_FRAG,
+      uniforms: this.uniforms,
+      transparent: true,
+      depthTest: true,
+      depthWrite: false,
+      blending: THREE.CustomBlending,
+      blendSrc: THREE.OneFactor,
+      blendDst: THREE.OneFactor,
+    });
+    this.atmosphereMesh = new THREE.Mesh(this.atmosphereGeo, this.atmosphereMaterial);
+    this.gateGroup.add(this.atmosphereMesh);
+  }
+
+  private buildGroundDatum(): void {
+    // Ultra-faint background horizon ground datum beneath the gate (Y ~ 0.84, Z ~ -32.5)
+    // 24 vertices gradient fading to zero on right
+    const segments = 24;
     const positions = new Float32Array((segments + 1) * 3);
     const colors = new Float32Array((segments + 1) * 3);
 
-    const pStart = new THREE.Vector3(0.1, 1.68, -29.6);
-    const pEnd = new THREE.Vector3(6.2, 1.64, -33.2);
-    const baseColor = this.cyanColor;
+    const pStart = new THREE.Vector3(-0.4, 0.84, -32.0);
+    const pEnd = new THREE.Vector3(5.8, 0.82, -33.5);
+    const baseColor = new THREE.Color(0x6e9eae);
 
     for (let i = 0; i <= segments; i++) {
       const t = i / segments;
@@ -55,10 +207,8 @@ export class ContactScene {
       positions[i * 3 + 1] = THREE.MathUtils.lerp(pStart.y, pEnd.y, t);
       positions[i * 3 + 2] = THREE.MathUtils.lerp(pStart.z, pEnd.z, t);
 
-      // Gradient: brightness fades from 0.22 at near end to 0.022 at far end
-      // Right end seamlessly dissolves into dark space
-      const fade = Math.pow(1.0 - t, 1.35);
-      const intensity = THREE.MathUtils.lerp(0.022, 0.22, fade);
+      const fade = Math.pow(1.0 - t, 1.5);
+      const intensity = THREE.MathUtils.lerp(0.005, 0.05, fade);
 
       colors[i * 3] = baseColor.r * intensity;
       colors[i * 3 + 1] = baseColor.g * intensity;
@@ -69,183 +219,77 @@ export class ContactScene {
     this.horizonGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     this.horizonGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
-    const horizonMat = new THREE.LineBasicMaterial({
+    this.horizonMaterial = new THREE.LineBasicMaterial({
       vertexColors: true,
       transparent: true,
       opacity: 1.0,
       blending: THREE.AdditiveBlending,
     });
-    this.horizonLine = new THREE.Line(this.horizonGeo, horizonMat);
+    this.horizonLine = new THREE.Line(this.horizonGeo, this.horizonMaterial);
     this.group.add(this.horizonLine);
+  }
 
-    // Parallel micro-faint auxiliary guide line (shorter span, fainter gradient)
-    const guideSegments = 20;
-    const guidePositions = new Float32Array((guideSegments + 1) * 3);
-    const guideColors = new Float32Array((guideSegments + 1) * 3);
-
-    const gStart = new THREE.Vector3(1.3, 1.62, -30.2);
-    const gEnd = new THREE.Vector3(4.5, 1.59, -32.3);
-    const guideBaseColor = this.mistColor;
-
-    for (let i = 0; i <= guideSegments; i++) {
-      const t = i / guideSegments;
-      guidePositions[i * 3] = THREE.MathUtils.lerp(gStart.x, gEnd.x, t);
-      guidePositions[i * 3 + 1] = THREE.MathUtils.lerp(gStart.y, gEnd.y, t);
-      guidePositions[i * 3 + 2] = THREE.MathUtils.lerp(gStart.z, gEnd.z, t);
-
-      const fade = Math.pow(1.0 - t, 1.2);
-      const intensity = THREE.MathUtils.lerp(0.008, 0.08, fade);
-
-      guideColors[i * 3] = guideBaseColor.r * intensity;
-      guideColors[i * 3 + 1] = guideBaseColor.g * intensity;
-      guideColors[i * 3 + 2] = guideBaseColor.b * intensity;
+  public setResponsiveLayout(aspect: number): void {
+    if (aspect < 1.0) {
+      // Mobile portrait: position cleanly in the right negative space without overlapping text
+      this.gateGroup.position.set(1.18, 2.15, -32.0);
+      this.gateGroup.scale.setScalar(0.66);
+    } else if (aspect < 1.4) {
+      // Tablet / narrow desktop
+      this.gateGroup.position.set(1.90, 2.30, -31.5);
+      this.gateGroup.scale.setScalar(0.88);
+    } else {
+      // Standard desktop
+      this.gateGroup.position.set(2.50, 2.40, -31.5);
+      this.gateGroup.scale.setScalar(1.0);
     }
-
-    this.guideGeo = new THREE.BufferGeometry();
-    this.guideGeo.setAttribute('position', new THREE.BufferAttribute(guidePositions, 3));
-    this.guideGeo.setAttribute('color', new THREE.BufferAttribute(guideColors, 3));
-
-    const guideMat = new THREE.LineBasicMaterial({
-      vertexColors: true,
-      transparent: true,
-      opacity: 1.0,
-      blending: THREE.AdditiveBlending,
-    });
-    this.microGuideLine = new THREE.Line(this.guideGeo, guideMat);
-    this.group.add(this.microGuideLine);
   }
 
-  private buildBeaconPoints(): void {
-    // 4 micro beacon points with non-uniform distribution:
-    // - Irregular spacing: gaps = 1.35, 0.85 (cluster), 1.95 (distant reach)
-    // - Size attenuation: radius 0.026 -> 0.022 -> 0.017 -> 0.012
-    // - Opacity attenuation: 0.42 -> 0.34 -> 0.26 -> 0.16 (furthest is faint and ethereal)
-    const pointConfigs = [
-      {
-        x: 0.95,
-        y: 1.674,
-        z: -30.10,
-        radius: 0.026,
-        baseOpacity: 0.42,
-        speed: 0.16,
-        offset: 0.0,
-        driftAmp: 0.14,
-        baseCol: this.cyanColor,
-      },
-      {
-        x: 2.30,
-        y: 1.666,
-        z: -30.90,
-        radius: 0.022,
-        baseOpacity: 0.34,
-        speed: 0.22,
-        offset: 1.5,
-        driftAmp: 0.11,
-        baseCol: this.cyanColor,
-      },
-      {
-        x: 3.15,
-        y: 1.660,
-        z: -31.40,
-        radius: 0.017,
-        baseOpacity: 0.26,
-        speed: 0.18,
-        offset: 3.0,
-        driftAmp: 0.08,
-        baseCol: this.mistColor,
-      },
-      {
-        x: 5.10,
-        y: 1.647,
-        z: -32.55,
-        radius: 0.012,
-        baseOpacity: 0.16,
-        speed: 0.12,
-        offset: 4.5,
-        driftAmp: 0.05,
-        baseCol: this.mistColor,
-      },
-    ];
-
-    const slopeY = -0.0065;
-    const slopeZ = -0.59;
-
-    pointConfigs.forEach((cfg) => {
-      const sphereGeo = new THREE.SphereGeometry(cfg.radius, 12, 12);
-      const mat = new THREE.MeshBasicMaterial({
-        color: cfg.baseCol.clone(),
-        transparent: true,
-        opacity: cfg.baseOpacity,
-        blending: THREE.AdditiveBlending,
-      });
-      const mesh = new THREE.Mesh(sphereGeo, mat);
-      mesh.position.set(cfg.x, cfg.y, cfg.z);
-      mesh.userData = {
-        baseX: cfg.x,
-        baseY: cfg.y,
-        baseZ: cfg.z,
-        baseOpacity: cfg.baseOpacity,
-        speed: cfg.speed,
-        offset: cfg.offset,
-        driftAmp: cfg.driftAmp,
-        slopeY,
-        slopeZ,
-      };
-
-      this.group.add(mesh);
-      this.beaconPoints.push(mesh);
-      this.beaconMaterials.push(mat);
-      this.beaconBaseColors.push(cfg.baseCol);
-    });
+  public setReducedMotion(reduced: boolean): void {
+    this.reducedMotion = reduced;
   }
 
-  public update(time: number, _dt: number, progress: number): void {
-    // Visibility window: smooth fade in as progress approaches Chapter 5 (peaks at progress 5.0)
-    const alpha = THREE.MathUtils.smoothstep(progress, 4.45, 4.95);
-    const isVisible = alpha > 0.004;
+  public setSuspended(suspended: boolean): void {
+    this.suspended = suspended;
+  }
+
+  public update(
+    time: number,
+    dt: number,
+    progress: number,
+    pointerDistance: number = 999
+  ): void {
+    // Reveal window: smoothstep 4.58 -> 4.86 as defined in report
+    const reveal = THREE.MathUtils.smoothstep(progress, 4.58, 4.86);
+    const isVisible = reveal > 0.001;
     this.group.visible = isVisible;
-    if (!isVisible) return;
+    if (!isVisible || this.suspended) return;
 
-    // Line material opacity scales with chapter progress
-    (this.horizonLine.material as THREE.LineBasicMaterial).opacity = alpha;
-    (this.microGuideLine.material as THREE.LineBasicMaterial).opacity = alpha;
+    this.uniforms.uReveal.value = reveal;
 
-    // Periodic gentle Sakura Pink pulse wave across mid-beacons (~4.5s cycle)
-    const pulseCycle = (time * 0.22) % 1.0;
-    const pulseWave = Math.sin(pulseCycle * Math.PI); // 0 -> 1 -> 0
+    // Pointer proximity: soft zone around gate (~200px equivalent in NDC: < 0.28)
+    const hoverTarget = pointerDistance < 0.28 ? 1.0 : 0.0;
+    // Exponential smoothing with frame-rate independence
+    const k = 1.0 - Math.exp(-dt * 5.5);
+    this.hoverValue += (hoverTarget - this.hoverValue) * k;
+    this.uniforms.uHover.value = this.hoverValue;
 
-    // Low-allocation update loop
-    const count = this.beaconPoints.length;
-    for (let i = 0; i < count; i++) {
-      const pt = this.beaconPoints[i];
-      const ud = pt.userData;
-      const drift = Math.sin(time * ud.speed + ud.offset) * ud.driftAmp;
-      pt.position.x = ud.baseX + drift;
-      pt.position.y = ud.baseY + drift * ud.slopeY;
-      pt.position.z = ud.baseZ + drift * ud.slopeZ;
+    this.uniforms.uMotion.value = this.reducedMotion ? 0.0 : 1.0;
 
-      const mat = this.beaconMaterials[i];
-      const baseCol = this.beaconBaseColors[i];
+    // Deterministic test time injection support
+    const effectiveTime = typeof (window as any).__DZX_TEST_TIME__ === 'number'
+      ? (window as any).__DZX_TEST_TIME__
+      : time;
 
-      if (i === 1) {
-        // Beacon 1 breathes gentle Sakura Pink pulse
-        this._tmpColor.copy(baseCol).lerp(this.pinkColor, pulseWave * 0.45);
-        mat.color.copy(this._tmpColor);
-        mat.opacity = (ud.baseOpacity + pulseWave * 0.22) * alpha;
-      } else if (i === 2) {
-        // Beacon 2 breathes Sakura Pink with phase offset
-        const lagWave = Math.sin(((pulseCycle + 0.18) % 1.0) * Math.PI);
-        this._tmpColor.copy(baseCol).lerp(this.pinkColor, lagWave * 0.35);
-        mat.color.copy(this._tmpColor);
-        mat.opacity = (ud.baseOpacity + lagWave * 0.16) * alpha;
-      } else if (i === 0) {
-        // Beacon 0: nearest beacon with subtle steady breathing
-        mat.opacity = (ud.baseOpacity + Math.sin(time * 0.8) * 0.08) * alpha;
-      } else {
-        // Beacon 3: furthest micro-beacon, faint and slow drifting in deep horizon
-        mat.opacity = (ud.baseOpacity + Math.sin(time * 0.45 + 2.0) * 0.04) * alpha;
-      }
+    if (!this.reducedMotion) {
+      this.uniforms.uTime.value = effectiveTime;
+      this.frozenTime = effectiveTime;
+    } else {
+      this.uniforms.uTime.value = this.frozenTime;
     }
+
+    // Update ground datum opacity
+    this.horizonMaterial.opacity = 0.06 * reveal;
   }
 
   public dispose(): void {
@@ -261,3 +305,4 @@ export class ContactScene {
     });
   }
 }
+

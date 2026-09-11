@@ -44,6 +44,8 @@ export class World {
   public onPortalLanded?: () => void;
   private tempFlightP: THREE.Vector3 = new THREE.Vector3();
   private tempFlightT: THREE.Vector3 = new THREE.Vector3();
+  private _gateWorldPos: THREE.Vector3 = new THREE.Vector3(2.50, 2.40, -31.5);
+  private _gateNdcPos: THREE.Vector3 = new THREE.Vector3();
   private isRunning: boolean = false;
   private clock: number = 0;
   private prevTime: number = performance.now();
@@ -55,6 +57,8 @@ export class World {
   private boundPointerDown: (e: PointerEvent) => void;
   private boundPointerUp: (e: PointerEvent) => void;
   private boundWheel: (e: WheelEvent) => void;
+  private boundReducedMotionChange?: (e: MediaQueryListEvent) => void;
+  private boundVisibilityChange?: () => void;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -162,6 +166,31 @@ export class World {
     window.addEventListener('pointerdown', this.boundPointerDown, { passive: true });
     window.addEventListener('pointerup', this.boundPointerUp, { passive: true });
     window.addEventListener('wheel', this.boundWheel, { passive: false });
+
+    // 8. Reduced Motion & Visibility Listeners for Terminal Gate
+    if (typeof window !== 'undefined' && window.matchMedia) {
+      const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+      this.contactScene.setReducedMotion(reducedMotionQuery.matches);
+      this.boundReducedMotionChange = (e: MediaQueryListEvent) => {
+        this.contactScene.setReducedMotion(e.matches);
+      };
+      reducedMotionQuery.addEventListener('change', this.boundReducedMotionChange);
+    }
+
+    this.boundVisibilityChange = () => {
+      this.contactScene.setSuspended(document.visibilityState === 'hidden');
+    };
+    document.addEventListener('visibilitychange', this.boundVisibilityChange);
+
+    // Expose dev/test render metrics hook
+    if ((import.meta as any).env?.DEV) {
+      (window as any).__DZX_RENDER_INFO__ = {
+        get calls() { return this.renderer.info.render.calls; },
+        get triangles() { return this.renderer.info.render.triangles; },
+        get lines() { return this.renderer.info.render.lines; },
+        get points() { return this.renderer.info.render.points; },
+      };
+    }
 
     // Start intro entrance dolly animation
     this.cameraRig.intro = 0;
@@ -309,7 +338,14 @@ export class World {
     this.projectsScene.update(this.clock, dt, smoothP);
     this.interestsScene.update(this.clock, dt, smoothP, this.cameraRig.mx, this.cameraRig.my);
     this.philosophyScene.update(this.clock, dt, smoothP);
-    this.contactScene.update(this.clock, dt, smoothP);
+
+    // Calculate Gate projected screen position and pointer proximity distance in NDC
+    this._gateNdcPos.copy(this._gateWorldPos).project(this.cameraRig.camera);
+    const dx = this.cameraRig.tmx - this._gateNdcPos.x;
+    const dy = this.cameraRig.tmy - this._gateNdcPos.y;
+    const pointerDistance = Math.hypot(dx, dy);
+    this.contactScene.update(this.clock, dt, smoothP, pointerDistance);
+
     this.xiaoZhaiOSWorld.update(this.clock, dt, this.scenePortal.isInPortal, this.transitionManager.progress);
     this.updateGlobalParticles(smoothP, this.clock);
 
@@ -454,6 +490,7 @@ export class World {
     this.cameraRig.resize(width, height);
     const isMobile = width < 768 || ('ontouchstart' in window);
     this.xiaoZhaiOSWorld.setMobileHitProxy(isMobile);
+    this.contactScene.setResponsiveLayout(this.cameraRig.camera.aspect);
   }
 
   public dispose(): void {
@@ -463,6 +500,14 @@ export class World {
     window.removeEventListener('pointerdown', this.boundPointerDown);
     window.removeEventListener('pointerup', this.boundPointerUp);
     window.removeEventListener('wheel', this.boundWheel);
+
+    if (this.boundVisibilityChange) {
+      document.removeEventListener('visibilitychange', this.boundVisibilityChange);
+    }
+    if (this.boundReducedMotionChange && typeof window !== 'undefined' && window.matchMedia) {
+      const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+      reducedMotionQuery.removeEventListener('change', this.boundReducedMotionChange);
+    }
 
     this.homeScene.dispose();
     this.aboutScene.dispose();

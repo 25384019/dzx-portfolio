@@ -696,16 +696,21 @@ export const ChapterSection: React.FC<ChapterSectionProps> = ({ onExploreXiaoZha
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
             {[
-              { label: 'GITHUB', link: 'https://github.com' },
-              { label: 'X / TWITTER', link: 'https://x.com' },
-              { label: 'EMAIL', link: 'mailto:contact@dzx.dev' },
+              { label: 'GITHUB', link: 'https://github.com', aria: 'GitHub Profile' },
+              { label: 'X / TWITTER', link: 'https://x.com', aria: 'X (formerly Twitter) Profile' },
+              { label: 'EMAIL', link: 'mailto:contact@dzx.dev', aria: 'Send Email to DZX' },
             ].map((btn) => (
               <a
                 key={btn.label}
                 href={btn.link}
                 target="_blank"
                 rel="noopener noreferrer"
+                aria-label={btn.aria}
                 style={{
+                  minHeight: 44,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                   padding: '12px 28px',
                   borderRadius: 999,
                   background: 'rgba(255, 255, 255, 0.04)',
@@ -716,6 +721,7 @@ export const ChapterSection: React.FC<ChapterSectionProps> = ({ onExploreXiaoZha
                   textDecoration: 'none',
                   fontWeight: 600,
                   transition: 'all 0.25s ease',
+                  outline: 'none',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = 'rgba(110, 158, 174, 0.18)';
@@ -726,6 +732,12 @@ export const ChapterSection: React.FC<ChapterSectionProps> = ({ onExploreXiaoZha
                   e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)';
                   e.currentTarget.style.borderColor = 'rgba(223, 231, 224, 0.2)';
                   e.currentTarget.style.transform = 'scale(1)';
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.boxShadow = '0 0 0 2px #6e9eae';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.boxShadow = 'none';
                 }}
               >
                 {btn.label} ↗
