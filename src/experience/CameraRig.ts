@@ -117,6 +117,9 @@ export class CameraRig {
   public intro: number = 0;
 
   private _tmpP = new THREE.Vector3();
+  private _evalP = new THREE.Vector3();
+  private _evalT = new THREE.Vector3();
+  private _evalSample = { p: this._evalP, t: this._evalT, roll: 0, fov: 42 };
 
   constructor(knots: CameraKnot[] = DZX_CAMERA_KNOTS) {
     this.knots = knots;
@@ -186,9 +189,9 @@ export class CameraRig {
     const h01 = -2 * u3 + 3 * u2;
     const h11 = u3 - u2;
 
-    // Position interpolation
-    const pOut = new THREE.Vector3();
-    const tOut = new THREE.Vector3();
+    // Position interpolation (pre-allocated Zero-GC vectors)
+    const pOut = this._evalP;
+    const tOut = this._evalT;
 
     for (let axis = 0; axis < 3; axis++) {
       // Tangents at k1 and k2
@@ -203,10 +206,10 @@ export class CameraRig {
 
     // Roll and FOV interpolation with smooth blending
     const smoothU = u * u * (3 - 2 * u);
-    const roll = THREE.MathUtils.lerp(k1.roll, k2.roll, smoothU);
-    const fov = THREE.MathUtils.lerp(k1.fov, k2.fov, smoothU);
+    this._evalSample.roll = THREE.MathUtils.lerp(k1.roll, k2.roll, smoothU);
+    this._evalSample.fov = THREE.MathUtils.lerp(k1.fov, k2.fov, smoothU);
 
-    return { p: pOut, t: tOut, roll, fov };
+    return this._evalSample;
   }
 
   public updateFromProgress(progress: number, dt: number, time: number): void {

@@ -102,17 +102,20 @@ export const DZXPortfolio: React.FC = () => {
 
   const handleSelectChapter = useCallback((index: number) => {
     if (isInPortal) return;
-    const maxScroll = (document.body.scrollHeight || window.innerHeight * 6) - window.innerHeight;
-    const targetScrollY = (index / 5) * maxScroll;
 
-    if (containerRef.current) {
-      containerRef.current.scrollTo({
-        top: targetScrollY,
+    const world = worldRef.current;
+    if (!world) return;
+
+    const targetY = world.scrollController.getAnchor(index);
+
+    if (world.scrollElement) {
+      world.scrollElement.scrollTo({
+        top: targetY,
         behavior: 'smooth',
       });
     } else {
       window.scrollTo({
-        top: targetScrollY,
+        top: targetY,
         behavior: 'smooth',
       });
     }

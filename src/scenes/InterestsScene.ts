@@ -21,6 +21,7 @@ export class InterestsScene {
   private kineticSplines: THREE.CatmullRomCurve3[] = [];
   private kineticPulseMeshes: THREE.Mesh[] = [];
   private anchorCrosses: THREE.Group[] = [];
+  private anchorLineMaterials: { mat: THREE.LineBasicMaterial; baseAlpha: number }[] = [];
 
   // 3. Music: Concentric harmonic spectrum rings & acoustic chords
   private soundGroup: THREE.Group = new THREE.Group();
@@ -325,6 +326,7 @@ export class InterestsScene {
       });
       const crossLines = new THREE.LineSegments(crossGeo, crossMat);
       anchorGroup.add(crossLines);
+      this.anchorLineMaterials.push({ mat: crossMat, baseAlpha: aIdx === 2 ? 0.70 : 0.60 });
 
       // Precision micro circular caliper ring (radius 0.10)
       const ringSegments = 24;
@@ -337,12 +339,14 @@ export class InterestsScene {
       }
       const ringGeo = new THREE.BufferGeometry();
       ringGeo.setAttribute('position', new THREE.BufferAttribute(ringPts, 3));
-      const ringMat = new THREE.LineLoop(ringGeo, new THREE.LineBasicMaterial({
+      const ringMat = new THREE.LineBasicMaterial({
         color: 0xb4c8d8,
         transparent: true,
         opacity: 0.45,
-      }));
-      anchorGroup.add(ringMat);
+      });
+      const ringLoop = new THREE.LineLoop(ringGeo, ringMat);
+      anchorGroup.add(ringLoop);
+      this.anchorLineMaterials.push({ mat: ringMat, baseAlpha: 0.45 });
 
       anchorGroup.userData = { baseRotSpeed: 0.3 + aIdx * 0.15 };
       this.bodyGroup.add(anchorGroup);
@@ -580,14 +584,13 @@ export class InterestsScene {
 
       const pulseScale = 1.0 + Math.sin(time * 2.0 + aIdx * 1.5) * 0.06;
       anchor.scale.set(pulseScale, pulseScale, pulseScale);
-
-      anchor.traverse((child) => {
-        if (child instanceof THREE.LineSegments || child instanceof THREE.LineLoop) {
-          (child.material as THREE.LineBasicMaterial).opacity =
-            (aIdx === 2 ? 0.70 : 0.60) * alpha * pBody;
-        }
-      });
     });
+
+    const anchorAlphaFactor = alpha * pBody;
+    for (let i = 0; i < this.anchorLineMaterials.length; i++) {
+      const item = this.anchorLineMaterials[i];
+      item.mat.opacity = item.baseAlpha * anchorAlphaFactor;
+    }
 
     // -----------------------------------------------------------------------
     // 3. Music Animation: Warm Analog Synthesizer Superposition
