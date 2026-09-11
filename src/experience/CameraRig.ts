@@ -50,13 +50,29 @@ export const DZX_CAMERA_KNOTS: CameraKnot[] = [
     roll: 0.014,
     fov: 45,
   },
-  // 03 INTERESTS: Expansive drift into creative and photography coordinates
+  // 02 -> 03 INTERESTS ENTRY: Lateral sweep grazing past the optical viewframe edge
+  {
+    progress: 2.65,
+    p: [0.4, 2.15, -7.6],
+    t: [-0.7, 1.65, -12.6],
+    roll: 0.006, // subtle bank roll ~0.34° into optical frame pass
+    fov: 45.4,
+  },
+  // 03 INTERESTS APEX: Skimming alongside kinetic force vectors, overlooking rhythmic spectrum
   {
     progress: 3.0,
-    p: [2.6, 1.8, -9.5],
-    t: [-0.4, 1.4, -14.5],
-    roll: -0.018,
-    fov: 46,
+    p: [2.5, 1.85, -9.8],
+    t: [-0.3, 1.45, -14.2],
+    roll: -0.007, // subtle counter-bank ~ -0.40° aligning with diagonal force field
+    fov: 46.0,
+  },
+  // 03 -> 04 TRANSITION: Gliding along kinetic trajectory ascending toward Philosophy
+  {
+    progress: 3.45,
+    p: [1.1, 2.65, -12.8],
+    t: [-0.2, 1.85, -17.8],
+    roll: 0.005, // bank leveling off ~0.29° into philosophy ascent
+    fov: 44.5,
   },
   // 04 PHILOSOPHY: Elevated ascending vantage point
   {

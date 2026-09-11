@@ -392,7 +392,7 @@ export const ChapterSection: React.FC<ChapterSectionProps> = ({ onExploreXiaoZha
         </div>
       </section>
 
-      {/* 03 INTERESTS / CREATIVE ARCHIVE */}
+      {/* 03 INTERESTS / SENSORY ARCHIVE */}
       <section
         id="ch-03"
         className="dzx-section"
@@ -405,7 +405,7 @@ export const ChapterSection: React.FC<ChapterSectionProps> = ({ onExploreXiaoZha
           padding: '120px 8vw 80px 8vw',
         }}
       >
-        <div className="dzx-chapter-content" data-ch="3" style={{ maxWidth: 960, willChange: 'transform, opacity' }}>
+        <div className="dzx-chapter-content" data-ch="3" style={{ maxWidth: 1040, willChange: 'transform, opacity' }}>
           <div
             style={{
               fontSize: 10,
@@ -416,66 +416,158 @@ export const ChapterSection: React.FC<ChapterSectionProps> = ({ onExploreXiaoZha
               marginBottom: 16,
             }}
           >
-            CHAPTER 03 — CREATIVE ARCHIVE
+            CHAPTER 03 — SENSORY ARCHIVE
           </div>
 
           <h2
             style={{
               fontFamily: "'Onest', system-ui, sans-serif",
-              fontSize: 'clamp(32px, 4.8vw, 56px)',
-              fontWeight: 700,
-              lineHeight: 1.1,
+              fontSize: 'clamp(28px, 4vw, 50px)',
+              fontWeight: 800,
+              lineHeight: 1.14,
               letterSpacing: '-0.02em',
               color: '#dfe7e0',
               margin: '0 0 36px 0',
               textTransform: 'uppercase',
             }}
           >
-            SENSORY & PHYSICAL DISCIPLINE.
+            WAYS OF SEEING.
+            <br />
+            <span style={{ color: '#6e9eae' }}>WAYS OF MOVING.</span>
+            <br />
+            <span style={{ color: '#f2c8d0' }}>WAYS OF LISTENING.</span>
           </h2>
 
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
               gap: 20,
             }}
           >
             {[
               {
-                title: 'CINEMATIC PHOTOGRAPHY',
-                tag: 'VISUAL',
-                desc: 'Capturing transient light across architecture, night cities, and mountain ridges with medium-format optics.',
+                number: '01',
+                theme: 'PHOTOGRAPHY',
+                concept: 'WAYS OF SEEING',
+                triad: 'LIGHT / FRAME / TIME',
+                title: 'OPTICAL FRAME SYSTEM',
+                accent: '#b4c8d8',
+                desc: 'Cinematic aspect ratios, multi-layered floating viewframes, and breathing iris apertures capturing transient architectural light.',
+                tags: ['2.39:1 ANAMORPHIC', 'OPTICAL APERTURE', 'RULE OF THIRDS'],
               },
               {
-                title: 'PHYSICAL RESILIENCE',
-                tag: 'BODY',
-                desc: 'Calisthenics, progressive overload, and endurance conditioning as anchors of mental clarity and cognitive stamina.',
+                number: '02',
+                theme: 'FITNESS',
+                concept: 'WAYS OF MOVING',
+                triad: 'STRENGTH / MOTION / CONTROL',
+                title: 'KINETIC FORCE FIELD',
+                accent: '#6e9eae',
+                desc: 'Biomechanical tension splines, flowing force vectors, and relentless physical conditioning as the anchor of cognitive stamina.',
+                tags: ['FORCE TRAJECTORY', 'TENSION & RELEASE', 'PHYSICAL DISCIPLINE'],
               },
               {
-                title: 'AMBIENT SOUNDSCAPES',
-                tag: 'AUDIO',
-                desc: 'Modular synthesis, low-frequency atmospheric pads, and rhythmic textures designed for deep focus states.',
+                number: '03',
+                theme: 'MUSIC',
+                concept: 'WAYS OF LISTENING',
+                triad: 'RHYTHM / SPACE / RESONANCE',
+                title: 'RHYTHMIC WAVE STRUCTURE',
+                accent: '#f2c8d0',
+                desc: 'Harmonic spectrum rings, warm analog synthesizer phase modulation, and low-frequency resonance defining spatial cadence.',
+                tags: ['HARMONIC SPECTRUM', 'ANALOG RESONANCE', 'TEMPORAL CADENCE'],
               },
             ].map((item) => (
               <div
-                key={item.title}
+                key={item.theme}
                 style={{
-                  background: 'rgba(5, 7, 10, 0.65)',
-                  border: '1px solid rgba(223, 231, 224, 0.1)',
-                  borderRadius: 12,
-                  padding: '24px',
-                  backdropFilter: 'blur(16px)',
+                  background: 'rgba(5, 7, 10, 0.72)',
+                  border: `1px solid rgba(223, 231, 224, 0.12)`,
+                  borderTop: `2px solid ${item.accent}`,
+                  borderRadius: 14,
+                  padding: '28px',
+                  backdropFilter: 'blur(20px)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  boxShadow: '0 16px 40px rgba(0, 0, 0, 0.5)',
                 }}
               >
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', color: '#b4c8d8', marginBottom: 8 }}>
-                  {item.tag}
+                <div>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: 12,
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 9,
+                        fontWeight: 700,
+                        letterSpacing: '0.2em',
+                        color: item.accent,
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      {item.number} / {item.theme}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 9,
+                        letterSpacing: '0.14em',
+                        color: 'rgba(223, 231, 224, 0.5)',
+                        fontFamily: 'monospace',
+                      }}
+                    >
+                      {item.triad}
+                    </span>
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize: 18,
+                      fontWeight: 700,
+                      color: '#dfe7e0',
+                      letterSpacing: '-0.01em',
+                      marginBottom: 10,
+                    }}
+                  >
+                    {item.title}
+                  </div>
+
+                  <p
+                    style={{
+                      fontSize: 13,
+                      lineHeight: 1.65,
+                      color: 'rgba(223, 231, 224, 0.7)',
+                      fontWeight: 300,
+                      marginBottom: 20,
+                    }}
+                  >
+                    {item.desc}
+                  </p>
                 </div>
-                <div style={{ fontSize: 16, fontWeight: 600, color: '#dfe7e0', marginBottom: 8 }}>
-                  {item.title}
-                </div>
-                <div style={{ fontSize: 13, lineHeight: 1.6, color: 'rgba(223, 231, 224, 0.65)', fontWeight: 300 }}>
-                  {item.desc}
+
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {item.tags.map((t) => (
+                    <span
+                      key={t}
+                      style={{
+                        padding: '3px 8px',
+                        borderRadius: 4,
+                        background: 'rgba(255, 255, 255, 0.04)',
+                        border: '1px solid rgba(223, 231, 224, 0.08)',
+                        fontSize: 8.5,
+                        letterSpacing: '0.12em',
+                        color: item.accent,
+                        textTransform: 'uppercase',
+                        fontWeight: 500,
+                      }}
+                    >
+                      {t}
+                    </span>
+                  ))}
                 </div>
               </div>
             ))}

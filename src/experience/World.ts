@@ -303,7 +303,7 @@ export class World {
     this.homeScene.update(this.clock, dt, smoothP);
     this.aboutScene.update(this.clock, dt, smoothP);
     this.projectsScene.update(this.clock, dt, smoothP);
-    this.interestsScene.update(this.clock, dt, smoothP);
+    this.interestsScene.update(this.clock, dt, smoothP, this.cameraRig.mx, this.cameraRig.my);
     this.philosophyScene.update(this.clock, dt, smoothP);
     this.xiaoZhaiOSWorld.update(this.clock, dt, this.scenePortal.isInPortal, this.transitionManager.progress);
     this.updateGlobalParticles(smoothP, this.clock);

@@ -15,8 +15,13 @@
    - **DZX Core 黑曜石透射与 3.6s 心跳脉冲**：半透明黑曜石材质，内置八面体神经晶核与数据流动点阵，每 3.6 秒微弱搏动一次樱粉（`#F2C8D0`）微光。
    - **Core 三维物理解构**：神石在滚动推进中拆解为 `COGNITION`、`SYSTEM`、`BODY / AESTHETICS` 三大悬浮模块，与 DOM 卡片精准呼应，正反滚动 100% 连续可逆。
 
-2. **各章节独立 3D 视觉语言 (Scene Identity Pass · 2.2)**：
-   - **INTERESTS (感官与身体修养)**：告别通用科技球，采用全新抽象三元几何——悬浮光学取景框（16:9 / 2.39:1 变形画幅与光圈刻度）、环形模拟合成器音频频谱波形、以及流线型动力学力线轨迹弧。
+2. **各章节独立 3D 视觉语言 (Scene Identity Pass · 2.3.3)**：
+   - **INTERESTS (感官、身体与节奏空间 · Phase 1)**：严格与 XiaoZhaiOS 的“认知/节点/多面体”语言隔离，采用“Human sensory systems inside a digital world”空间概念：
+     * **01 / PHOTOGRAPHY (Optical Frame System · Ways of Seeing: Light / Frame / Time)**：四层悬浮光学景框（2.39:1 变形宽银幕、16:9 电影画幅、4:3 中画幅、1:1 方形接触印相），配备精密内角标、三分线十字丝与胶片校准刻度；内置 9 叶片动态呼吸光圈（f/1.4 ~ f/5.6）与穿透景框的准直折射导光细线。
+     * **02 / FITNESS (Kinetic Force Field · Ways of Moving: Strength / Motion / Control)**：由多条生物力学张力样条曲线组成的动力学力场流束，伴随呼吸张合波动与非线性加速的流线型动能脉冲；在负载点、转折点与平衡点设立极简三维空间坐标十字微规标（`STRENGTH`、`MOTION`、`CONTROL`，非多面体、非记忆节点）。
+     * **03 / MUSIC (Rhythmic Wave Structure · Ways of Listening: Rhythm / Space / Resonance)**：斜切视角的 5 组同心谐波谱带环，以纯数学无垃圾回收方式叠加热温暖的模拟合成器基频与泛音频移驻波，辅以节点谐振弦线，营造克制深沉的空间声学律动（无 EDM 频闪）。
+     * **三角互锁空间编排与发现时间线 (Unified Triangulated Layout & Timeline)**：摄影在左前、力线斜切穿透中景、音乐深潜右后，沿滚动进度（2.2 → 3.8）呈递进式视觉解构与汇合，正向与反向滚动 100% 连续平滑可逆。
+     * **镜头航路编排 (Camera Choreography)**：在 Chapter 3 入口执行侧切横移（lateral sweep），以 0.2° ~ 0.5° 优雅横滚倾角（bank roll）掠过景框边缘，贴附动力学力线俯瞰音频频谱。
    - **PHILOSOPHY (持续重构哲学)**：极简沉静的空间演化曲线（Evolution Curve），随滚动动态分叉、推演与汇合，具象表达思维与架构的持续重构。
    - **CONTACT (连接与超越)**：滚动到底部时背景粒子渐进衰减（100% → 60% → 25% → 8%），仅留极少发光星尘、纯粹排版与联系入口，极度静谧收尾。
 
