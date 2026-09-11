@@ -295,8 +295,8 @@ export class World {
       }
     }
 
-    // Ensure camera world matrix is completely up-to-date for raycasting and scene rendering
-    this.cameraRig.camera.updateMatrixWorld();
+    // Ensure camera world matrix is completely up-to-date
+    this.cameraRig.camera.updateMatrixWorld(true);
 
     // 3. Update Scene Animations with Continuous Spatial Progress
     const smoothP = this.scrollController.smoothProgress;
@@ -308,7 +308,12 @@ export class World {
     this.xiaoZhaiOSWorld.update(this.clock, dt, this.scenePortal.isInPortal, this.transitionManager.progress);
     this.updateGlobalParticles(smoothP, this.clock);
 
-    // 4. Update Sub-Scene Portal Raycasting & Presence Recognition (frame-perfect camera & node matrices)
+    // Explicitly update XiaoZhaiOS world matrices so Raycaster tests against exact current-frame transforms
+    if (this.scenePortal.isInPortal || this.transitionManager.progress > 0.0001) {
+      this.xiaoZhaiOSWorld.group.updateMatrixWorld(true);
+    }
+
+    // 4. Update Sub-Scene Portal Raycasting & Presence Recognition (100% current-frame camera & node matrices)
     this.scenePortal.update(dt);
 
     // 5. Update Spatial Position-Driven DOM Reveal

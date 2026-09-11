@@ -204,8 +204,19 @@ export class ScenePortal {
         if (this.xiaoZhaiOSWorld) {
           this.xiaoZhaiOSWorld.selectedNodeId = this.selectedNodeId;
         }
+      } else if (this.isCoreHovered) {
+        // Clicked on Central Core: safe area
+        if (this.selectedNodeId) {
+          // If a node was selected, safely deselect it
+          this.selectedNodeId = null;
+          this.desiredTargetOffset.set(0, 0, 0);
+          if (this.xiaoZhaiOSWorld) {
+            this.xiaoZhaiOSWorld.selectedNodeId = null;
+          }
+        }
+        // If no node was selected, clicking Core does nothing (does NOT exit portal)
       } else {
-        // Clicked on background: if node is selected, unselect it; otherwise exit portal
+        // Clicked on true empty background: if node is selected, unselect it; otherwise exit portal
         if (this.selectedNodeId) {
           this.selectedNodeId = null;
           this.desiredTargetOffset.set(0, 0, 0);
