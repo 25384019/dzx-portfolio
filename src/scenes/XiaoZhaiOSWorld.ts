@@ -140,8 +140,8 @@ export class XiaoZhaiOSWorld {
     this.coreLight = new THREE.PointLight(0x6e9eae, 2.2, 10.0);
     this.coreMesh.add(this.coreLight);
 
-    // Subtle Surface Fresnel Contact Spot (Micro ambient glint, extremely faint)
-    const spotGeo = new THREE.SphereGeometry(0.04, 12, 12);
+    // Visual Core Surface Contact Spot (Soft Ice Cyan ambient glint)
+    const spotGeo = new THREE.SphereGeometry(0.10, 16, 16);
     const spotMat = new THREE.MeshBasicMaterial({
       color: 0x6e9eae,
       transparent: true,
@@ -617,9 +617,9 @@ export class XiaoZhaiOSWorld {
     if (this.coreSurfaceSpot) {
       if (this.isCoreHit) {
         this.currentSpotPos.lerp(this.targetSpotPos, 0.18);
-        this.spotOpacity = THREE.MathUtils.lerp(this.spotOpacity, 0.10, 0.12);
+        this.spotOpacity = THREE.MathUtils.lerp(this.spotOpacity, 0.28, 0.12);
       } else {
-        this.spotOpacity = THREE.MathUtils.lerp(this.spotOpacity, 0.0, 0.08);
+        this.spotOpacity = THREE.MathUtils.lerp(this.spotOpacity, 0.0, 0.06);
       }
       this.coreSurfaceSpot.position.copy(this.currentSpotPos);
       (this.coreSurfaceSpot.material as THREE.MeshBasicMaterial).opacity = this.spotOpacity * enterFactor;
