@@ -16,7 +16,6 @@ export const NodeDescriptor = React.forwardRef<HTMLDivElement, NodeDescriptorPro
 
   // Derive node display index
   const indexMap: Record<string, string> = {
-    CORE: '00',
     RAW: '01',
     CONTEXT: '02',
     SELF: '03',
@@ -100,7 +99,7 @@ export const NodeDescriptor = React.forwardRef<HTMLDivElement, NodeDescriptorPro
           gap: 6,
         }}
       >
-        <span>{activeNode.id === 'CORE' ? 'KERNEL / 00' : `MEMORY / ${nodeIndex}`}</span>
+        <span>MEMORY / {nodeIndex}</span>
         {activeNode.isSelected && (
           <span
             style={{

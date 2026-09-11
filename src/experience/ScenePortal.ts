@@ -189,20 +189,16 @@ export class ScenePortal {
       if (target && target.closest('button, a')) return;
 
       if (this.hoveredNodeId) {
-        // Clicked on a Memory Node or Core: toggle spatial selection
+        // Clicked on one of the 4 Satellite Memory Nodes: toggle spatial selection
         if (this.selectedNodeId === this.hoveredNodeId) {
           this.selectedNodeId = null;
           this.desiredTargetOffset.set(0, 0, 0);
         } else {
           this.selectedNodeId = this.hoveredNodeId;
-          if (this.selectedNodeId === 'CORE') {
-            this.desiredTargetOffset.set(0, 0, 0);
-          } else {
-            const node = this.xiaoZhaiOSWorld?.getMemoryNodes().find(n => n.id === this.selectedNodeId);
-            if (node) {
-              // Subtle shift of camera target toward node (max 0.35 unit shift)
-              this.desiredTargetOffset.copy(node.position).multiplyScalar(0.22);
-            }
+          const node = this.xiaoZhaiOSWorld?.getMemoryNodes().find(n => n.id === this.selectedNodeId);
+          if (node) {
+            // Subtle shift of camera target toward node (max 0.35 unit shift)
+            this.desiredTargetOffset.copy(node.position).multiplyScalar(0.22);
           }
         }
         if (this.xiaoZhaiOSWorld) {
@@ -279,22 +275,16 @@ export class ScenePortal {
       }
     }
 
-    // Core sensing (Fresnel contact spot responding to cursor contact)
+    // Core sensing (Very faint ambient surface response only - never triggers focus, descriptor, or selection)
     this.isCoreHovered = coreHit;
     this.xiaoZhaiOSWorld.setCoreHit(coreHitPoint);
 
-    // Node & Core focus
-    if (hitNode) {
-      this.hoveredNodeId = hitNode.id;
-    } else if (coreHit) {
-      this.hoveredNodeId = 'CORE';
-    } else {
-      this.hoveredNodeId = null;
-    }
+    // Node focus (ONLY the 4 satellite memory nodes)
+    this.hoveredNodeId = hitNode ? hitNode.id : null;
     this.xiaoZhaiOSWorld.hoveredNodeId = this.hoveredNodeId;
 
-    // Dwell conduction (Only when hovering an outer memory node, NOT on core)
-    if (this.hoveredNodeId && this.hoveredNodeId !== 'CORE') {
+    // Dwell conduction (Only when hovering an outer memory node)
+    if (this.hoveredNodeId) {
       this.dwellTimer += dt;
       const dwellProg = THREE.MathUtils.clamp((this.dwellTimer - 0.4) / (this.dwellThreshold - 0.4), 0, 1);
       this.xiaoZhaiOSWorld.setDwellConnection(this.hoveredNodeId, dwellProg);
@@ -307,9 +297,9 @@ export class ScenePortal {
     const activeTargetId = this.selectedNodeId || this.hoveredNodeId;
     if (this.descriptorElement) {
       if (activeTargetId && this.camera && this.xiaoZhaiOSWorld) {
-        if (activeTargetId === 'CORE') {
-          const coreMesh = this.xiaoZhaiOSWorld.getCoreMesh();
-          coreMesh.getWorldPosition(this.tempProjVec);
+        const activeNode = nodes.find(n => n.id === activeTargetId);
+        if (activeNode) {
+          activeNode.mesh.getWorldPosition(this.tempProjVec);
           this.tempProjVec.project(this.camera);
           const W = window.innerWidth;
           const H = window.innerHeight;
@@ -320,8 +310,7 @@ export class ScenePortal {
           const isNearTop = sy < 115;
           const isNearBottom = sy > H - 120;
 
-          // Place neatly beside the central icosahedron
-          const offsetX = isRightHalf ? -260 : 36;
+          const offsetX = isRightHalf ? -240 : 20;
           const offsetY = isNearTop ? 20 : isNearBottom ? -55 : -36;
 
           const finalX = THREE.MathUtils.clamp(sx + offsetX, 20, W - 250);
@@ -332,32 +321,7 @@ export class ScenePortal {
           this.descriptorElement.setAttribute('data-placement-x', isRightHalf ? 'left' : 'right');
           this.descriptorElement.setAttribute('data-placement-y', isNearTop ? 'bottom' : isNearBottom ? 'top' : 'default');
         } else {
-          const activeNode = nodes.find(n => n.id === activeTargetId);
-          if (activeNode) {
-            activeNode.mesh.getWorldPosition(this.tempProjVec);
-            this.tempProjVec.project(this.camera);
-            const W = window.innerWidth;
-            const H = window.innerHeight;
-            const sx = (this.tempProjVec.x * 0.5 + 0.5) * W;
-            const sy = (-this.tempProjVec.y * 0.5 + 0.5) * H;
-
-            const isRightHalf = sx > W * 0.5;
-            const isNearTop = sy < 115;
-            const isNearBottom = sy > H - 120;
-
-            const offsetX = isRightHalf ? -240 : 20;
-            const offsetY = isNearTop ? 20 : isNearBottom ? -55 : -36;
-
-            const finalX = THREE.MathUtils.clamp(sx + offsetX, 20, W - 250);
-            const finalY = THREE.MathUtils.clamp(sy + offsetY, 80, H - 110);
-
-            this.descriptorElement.style.transform = `translate3d(${Math.round(finalX)}px, ${Math.round(finalY)}px, 0)`;
-            this.descriptorElement.style.opacity = '1';
-            this.descriptorElement.setAttribute('data-placement-x', isRightHalf ? 'left' : 'right');
-            this.descriptorElement.setAttribute('data-placement-y', isNearTop ? 'bottom' : isNearBottom ? 'top' : 'default');
-          } else {
-            this.descriptorElement.style.opacity = '0';
-          }
+          this.descriptorElement.style.opacity = '0';
         }
       } else {
         this.descriptorElement.style.opacity = '0';
@@ -365,6 +329,7 @@ export class ScenePortal {
     }
 
     // Discrete React State Broadcast (Zero 60fps bridge)
+    // Note: Core hover does NOT trigger cursor tightening or descriptor; only satellite node hover does.
     const isFocused = this.hoveredNodeId !== null || this.selectedNodeId !== null;
     const isCoreHit = this.isCoreHovered;
     const stateChanged =
@@ -384,24 +349,6 @@ export class ScenePortal {
       if (this.onPresenceChange) {
         const getScreenInfo = (targetId: string | null): PresenceNodeInfo | null => {
           if (!targetId) return null;
-          if (targetId === 'CORE') {
-            const coreMesh = this.xiaoZhaiOSWorld?.getCoreMesh();
-            if (!coreMesh || !this.camera) return null;
-            coreMesh.getWorldPosition(this.tempProjVec);
-            this.tempProjVec.project(this.camera);
-            const sx = (this.tempProjVec.x * 0.5 + 0.5) * window.innerWidth;
-            const sy = (-this.tempProjVec.y * 0.5 + 0.5) * window.innerHeight;
-            return {
-              id: 'CORE',
-              label: 'XIAOZHAI KERNEL',
-              sublabel: 'Central Cognitive Nexus & Synaptic Bus',
-              screenX: sx,
-              screenY: sy,
-              color: 0x6e9eae,
-              isSelected: this.selectedNodeId === 'CORE',
-              isHovered: this.hoveredNodeId === 'CORE',
-            };
-          }
           const n = nodes.find(item => item.id === targetId);
           if (!n || !this.camera) return null;
 

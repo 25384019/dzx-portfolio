@@ -140,8 +140,8 @@ export class XiaoZhaiOSWorld {
     this.coreLight = new THREE.PointLight(0x6e9eae, 2.2, 10.0);
     this.coreMesh.add(this.coreLight);
 
-    // Subtle Surface Fresnel Contact Spot (Responding to cursor gaze on Core)
-    const spotGeo = new THREE.SphereGeometry(0.18, 16, 16);
+    // Subtle Surface Fresnel Contact Spot (Micro ambient glint, extremely faint)
+    const spotGeo = new THREE.SphereGeometry(0.04, 12, 12);
     const spotMat = new THREE.MeshBasicMaterial({
       color: 0x6e9eae,
       transparent: true,
@@ -242,8 +242,8 @@ export class XiaoZhaiOSWorld {
       const nodeBeacon = new THREE.Mesh(beaconGeo, beaconMat);
       nodeMesh.add(nodeBeacon);
 
-      // Dedicated Interaction Hit Proxy (Shape-Matched Octahedron radius 0.48, fully enclosing rotating visual 0.32)
-      const hitGeo = new THREE.OctahedronGeometry(0.48, 0);
+      // Dedicated Interaction Hit Proxy (Shape-Matched Octahedron radius 0.38, matching visual 0.32)
+      const hitGeo = new THREE.OctahedronGeometry(0.38, 0);
       const hitMat = new THREE.MeshBasicMaterial({
         transparent: true,
         opacity: 0.0,
@@ -265,7 +265,7 @@ export class XiaoZhaiOSWorld {
         wire: nodeWire,
         beacon: nodeBeacon,
         hitMesh,
-        hitRadius: 0.48,
+        hitRadius: 0.38,
       });
     });
 
@@ -617,7 +617,7 @@ export class XiaoZhaiOSWorld {
     if (this.coreSurfaceSpot) {
       if (this.isCoreHit) {
         this.currentSpotPos.lerp(this.targetSpotPos, 0.18);
-        this.spotOpacity = THREE.MathUtils.lerp(this.spotOpacity, 0.55, 0.12);
+        this.spotOpacity = THREE.MathUtils.lerp(this.spotOpacity, 0.10, 0.12);
       } else {
         this.spotOpacity = THREE.MathUtils.lerp(this.spotOpacity, 0.0, 0.08);
       }

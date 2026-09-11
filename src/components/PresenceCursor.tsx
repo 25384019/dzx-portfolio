@@ -11,34 +11,22 @@ export const PresenceCursor: React.FC<PresenceCursorProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const mouseRef = useRef({ x: -100, y: -100 });
-  const rafRef = useRef<number>(0);
 
   useEffect(() => {
-    const handleMove = (e: MouseEvent) => {
+    const handleMove = (e: MouseEvent | PointerEvent) => {
       mouseRef.current.x = e.clientX;
       mouseRef.current.y = e.clientY;
+      if (containerRef.current) {
+        containerRef.current.style.transform = `translate3d(${e.clientX}px, ${e.clientY}px, 0)`;
+      }
     };
 
+    window.addEventListener('pointermove', handleMove, { passive: true });
     window.addEventListener('mousemove', handleMove, { passive: true });
 
-    let currentX = -100;
-    let currentY = -100;
-
-    const loop = () => {
-      if (mouseRef.current.x > 0 && containerRef.current) {
-        // Subtle organic damping without React state overhead
-        currentX += (mouseRef.current.x - currentX) * 0.35;
-        currentY += (mouseRef.current.y - currentY) * 0.35;
-        containerRef.current.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
-      }
-      rafRef.current = requestAnimationFrame(loop);
-    };
-
-    rafRef.current = requestAnimationFrame(loop);
-
     return () => {
+      window.removeEventListener('pointermove', handleMove);
       window.removeEventListener('mousemove', handleMove);
-      cancelAnimationFrame(rafRef.current);
     };
   }, []);
 
