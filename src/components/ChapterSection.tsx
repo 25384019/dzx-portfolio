@@ -2,9 +2,10 @@ import React from 'react';
 
 interface ChapterSectionProps {
   onExploreXiaoZhaiOS: () => void;
+  onExploreAmemachi?: () => void;
 }
 
-export const ChapterSection: React.FC<ChapterSectionProps> = ({ onExploreXiaoZhaiOS }) => {
+export const ChapterSection: React.FC<ChapterSectionProps> = ({ onExploreXiaoZhaiOS, onExploreAmemachi }) => {
   return (
     <div className="dzx-chapters-container" style={{ position: 'relative', zIndex: 10, pointerEvents: 'auto' }}>
       {/* 00 HOME / ORIGIN */}
@@ -382,6 +383,158 @@ export const ChapterSection: React.FC<ChapterSectionProps> = ({ onExploreXiaoZha
                     fontSize: 9,
                     letterSpacing: '0.12em',
                     color: '#b4c8d8',
+                  }}
+                >
+                  {t}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Amemachi Store Flagship 3D Project Card (02 / 03) */}
+          <div
+            style={{
+              background: 'linear-gradient(135deg, rgba(8, 18, 24, 0.85) 0%, rgba(5, 8, 12, 0.9) 100%)',
+              border: '1px solid rgba(97, 215, 178, 0.35)',
+              borderRadius: 16,
+              padding: '36px 40px',
+              backdropFilter: 'blur(24px)',
+              boxShadow: '0 24px 64px rgba(0, 0, 0, 0.8), 0 0 32px rgba(97, 215, 178, 0.12)',
+              position: 'relative',
+              overflow: 'hidden',
+              marginBottom: 24,
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16, marginBottom: 20 }}>
+              <div>
+                <span
+                  style={{
+                    display: 'inline-block',
+                    fontSize: 10,
+                    fontWeight: 600,
+                    letterSpacing: '0.2em',
+                    color: '#61d7b2',
+                    textTransform: 'uppercase',
+                    marginBottom: 8,
+                  }}
+                >
+                  INTERACTIVE 3D DIORAMA · 02 / 03
+                </span>
+                <h3
+                  style={{
+                    fontSize: 'clamp(26px, 3.5vw, 40px)',
+                    fontWeight: 700,
+                    letterSpacing: '-0.01em',
+                    color: '#dfe7e0',
+                    margin: 0,
+                  }}
+                >
+                  <span translate="no">Amemachi</span>
+                  <span style={{ fontSize: '0.55em', fontWeight: 400, color: '#9adbc5', marginLeft: 12 }}>
+                    雨町商店 · Rain at the corner
+                  </span>
+                </h3>
+              </div>
+
+              {/* Action Buttons: 3D Explore + Fullscreen */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <button
+                  onClick={onExploreAmemachi}
+                  type="button"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '12px 24px',
+                    borderRadius: 999,
+                    background: 'rgba(97, 215, 178, 0.18)',
+                    border: '1px solid #61d7b2',
+                    color: '#fff',
+                    fontFamily: "'Onest', system-ui, sans-serif",
+                    fontSize: 11,
+                    fontWeight: 600,
+                    letterSpacing: '0.14em',
+                    textTransform: 'uppercase',
+                    cursor: 'pointer',
+                    boxShadow: '0 0 20px rgba(97, 215, 178, 0.3)',
+                    transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(97, 215, 178, 0.35)';
+                    e.currentTarget.style.transform = 'scale(1.04)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(97, 215, 178, 0.18)';
+                    e.currentTarget.style.transform = 'scale(1)';
+                  }}
+                >
+                  <span>✦ 3D 实时探索 (EXPLORE 3D)</span>
+                  <span style={{ fontSize: 14 }}>↗</span>
+                </button>
+
+                <a
+                  href="/amemachi.html"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '12px 20px',
+                    borderRadius: 999,
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    border: '1px solid rgba(223, 231, 224, 0.2)',
+                    color: '#dfe7e0',
+                    fontFamily: "'Onest', system-ui, sans-serif",
+                    fontSize: 11,
+                    fontWeight: 600,
+                    letterSpacing: '0.12em',
+                    textTransform: 'uppercase',
+                    textDecoration: 'none',
+                    transition: 'all 0.3s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)';
+                    e.currentTarget.style.borderColor = 'rgba(223, 231, 224, 0.4)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                    e.currentTarget.style.borderColor = 'rgba(223, 231, 224, 0.2)';
+                  }}
+                >
+                  <span>独立全屏</span>
+                  <span>↗</span>
+                </a>
+              </div>
+            </div>
+
+            <p
+              style={{
+                maxWidth: 680,
+                fontSize: 15,
+                lineHeight: 1.7,
+                color: 'rgba(223, 231, 224, 0.75)',
+                fontWeight: 300,
+                marginBottom: 24,
+              }}
+            >
+              Cinematic Tokyo convenience store diorama under continuous nocturnal rain.
+              Featuring real-time planar mirror puddle reflections, 740+ instanced rain particles & ripples,
+              procedural canvas signage textures, and multi-angle orbital camera control.
+            </p>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {['THREE.JS R160', 'CUSTOM REFLECTION SHADER', 'WEATHER DYNAMICS', 'INSTANCED MESH', 'PROCEDURAL CANVAS TEXTURES'].map((t) => (
+                <span
+                  key={t}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: 4,
+                    background: 'rgba(97, 215, 178, 0.08)',
+                    border: '1px solid rgba(97, 215, 178, 0.2)',
+                    fontSize: 9,
+                    letterSpacing: '0.12em',
+                    color: '#61d7b2',
                   }}
                 >
                   {t}

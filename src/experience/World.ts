@@ -344,7 +344,7 @@ export class World {
     const dx = this.cameraRig.tmx - this._gateNdcPos.x;
     const dy = this.cameraRig.tmy - this._gateNdcPos.y;
     const pointerDistance = Math.hypot(dx, dy);
-    this.contactScene.update(this.clock, dt, smoothP, pointerDistance);
+    this.contactScene.update(this.clock, dt, smoothP, pointerDistance, dx);
 
     this.xiaoZhaiOSWorld.update(this.clock, dt, this.scenePortal.isInPortal, this.transitionManager.progress);
     this.updateGlobalParticles(smoothP, this.clock);

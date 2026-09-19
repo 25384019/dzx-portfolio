@@ -5,6 +5,7 @@ import { ScrollRail } from './components/ScrollRail';
 import { MediaCard } from './components/MediaCard';
 import { PortalHUD } from './components/PortalHUD';
 import { ChapterSection } from './components/ChapterSection';
+import { AmemachiModal } from './components/AmemachiModal';
 import { PresenceCursor } from './components/PresenceCursor';
 import { PresenceIntro } from './components/PresenceIntro';
 import { NodeDescriptor } from './components/NodeDescriptor';
@@ -20,6 +21,7 @@ export const DZXPortfolio: React.FC = () => {
   const [isInPortal, setIsInPortal] = useState(false);
   const [isPortalLanded, setIsPortalLanded] = useState(false);
   const [isHUDVisible, setIsHUDVisible] = useState(false);
+  const [isAmemachiModalOpen, setIsAmemachiModalOpen] = useState(false);
   const [presenceState, setPresenceState] = useState<PresenceState>({
     isFocused: false,
     isCoreHit: false,
@@ -248,8 +250,17 @@ export const DZXPortfolio: React.FC = () => {
           pointerEvents: isInPortal ? 'none' : 'auto',
         }}
       >
-        <ChapterSection onExploreXiaoZhaiOS={handleExploreXiaoZhaiOS} />
+        <ChapterSection
+          onExploreXiaoZhaiOS={handleExploreXiaoZhaiOS}
+          onExploreAmemachi={() => setIsAmemachiModalOpen(true)}
+        />
       </div>
+
+      {/* Amemachi Store 3D Diorama Interactive Modal */}
+      <AmemachiModal
+        isOpen={isAmemachiModalOpen}
+        onClose={() => setIsAmemachiModalOpen(false)}
+      />
     </div>
   );
 };
