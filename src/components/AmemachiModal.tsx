@@ -335,7 +335,7 @@ export const AmemachiModal: React.FC<AmemachiModalProps> = ({ isOpen, onClose })
             </button>
 
             <a
-              href="/amemachi.html"
+              href={`${(import.meta as any).env?.BASE_URL || './'}amemachi.html`}
               target="_blank"
               rel="noopener noreferrer"
               style={{
@@ -440,7 +440,7 @@ export const AmemachiModal: React.FC<AmemachiModalProps> = ({ isOpen, onClose })
 
           <iframe
             ref={iframeRef}
-            src="/amemachi.html"
+            src={`${(import.meta as any).env?.BASE_URL || './'}amemachi.html`}
             title="雨町商店 3D 街角微缩模型"
             onLoad={() => setIframeLoaded(true)}
             style={{

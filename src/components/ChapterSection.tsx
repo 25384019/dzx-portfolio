@@ -483,7 +483,7 @@ export const ChapterSection: React.FC<ChapterSectionProps> = ({ onExploreXiaoZha
                     </button>
 
                     <a
-                      href="/amemachi.html"
+                      href={`${(import.meta as any).env?.BASE_URL || './'}amemachi.html`}
                       target="_blank"
                       rel="noopener noreferrer"
                       style={{
