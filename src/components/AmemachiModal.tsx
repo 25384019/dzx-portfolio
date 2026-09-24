@@ -5,30 +5,94 @@ interface AmemachiModalProps {
   onClose: () => void;
 }
 
+// Procedural Pink-Noise Nocturnal Rain Synthesizer via Web Audio API
+class AmbientRainAudio {
+  private ctx: AudioContext | null = null;
+  private noiseNode: AudioBufferSourceNode | null = null;
+  private gainNode: GainNode | null = null;
+  private filterNode: BiquadFilterNode | null = null;
+
+  public play() {
+    try {
+      if (!this.ctx) {
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        this.ctx = new AudioCtx();
+      }
+      if (this.ctx.state === 'suspended') {
+        this.ctx.resume();
+      }
+      const bufferSize = this.ctx.sampleRate * 2;
+      const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+      for (let i = 0; i < bufferSize; i++) {
+        const white = Math.random() * 2 - 1;
+        b0 = 0.99886 * b0 + white * 0.0555179;
+        b1 = 0.99332 * b1 + white * 0.0750759;
+        b2 = 0.96900 * b2 + white * 0.1538520;
+        b3 = 0.86650 * b3 + white * 0.3104856;
+        b4 = 0.55000 * b4 + white * 0.5329522;
+        b5 = -0.7616 * b5 - white * 0.0168980;
+        data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.045;
+        b6 = white * 0.115926;
+      }
+      this.noiseNode = this.ctx.createBufferSource();
+      this.noiseNode.buffer = buffer;
+      this.noiseNode.loop = true;
+
+      this.filterNode = this.ctx.createBiquadFilter();
+      this.filterNode.type = 'lowpass';
+      this.filterNode.frequency.setValueAtTime(920, this.ctx.currentTime);
+      this.filterNode.Q.setValueAtTime(1.2, this.ctx.currentTime);
+
+      this.gainNode = this.ctx.createGain();
+      this.gainNode.gain.setValueAtTime(0.001, this.ctx.currentTime);
+      this.gainNode.gain.exponentialRampToValueAtTime(0.3, this.ctx.currentTime + 1.2);
+
+      this.noiseNode.connect(this.filterNode);
+      this.filterNode.connect(this.gainNode);
+      this.gainNode.connect(this.ctx.destination);
+      this.noiseNode.start();
+    } catch {
+      // AudioContext not allowed or unsupported
+    }
+  }
+
+  public stop() {
+    try {
+      if (this.gainNode && this.ctx) {
+        this.gainNode.gain.setValueAtTime(this.gainNode.gain.value, this.ctx.currentTime);
+        this.gainNode.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + 0.4);
+        setTimeout(() => {
+          try {
+            this.noiseNode?.stop();
+            this.noiseNode?.disconnect();
+            this.filterNode?.disconnect();
+            this.gainNode?.disconnect();
+          } catch {}
+          this.noiseNode = null;
+          this.gainNode = null;
+          this.filterNode = null;
+        }, 450);
+      }
+    } catch {}
+  }
+
+  public dispose() {
+    this.stop();
+    try {
+      this.ctx?.close();
+    } catch {}
+    this.ctx = null;
+  }
+}
+
 export const AmemachiModal: React.FC<AmemachiModalProps> = ({ isOpen, onClose }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const audioRef = useRef<AmbientRainAudio | null>(null);
   const [activeView, setActiveView] = useState<'default' | 'detail' | 'right' | 'left'>('default');
   const [iframeLoaded, setIframeLoaded] = useState(false);
-
-  // Close on Escape key
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
-
-  // Reset states when modal opens/closes
-  useEffect(() => {
-    if (isOpen) {
-      setActiveView('default');
-      setIframeLoaded(false);
-    }
-  }, [isOpen]);
+  const [isAudioActive, setIsAudioActive] = useState(false);
 
   const handleSetView = useCallback((view: 'default' | 'detail' | 'right' | 'left') => {
     setActiveView(view);
@@ -37,10 +101,66 @@ export const AmemachiModal: React.FC<AmemachiModalProps> = ({ isOpen, onClose })
       if (iframeWin && iframeWin.__storeScene?.setView) {
         iframeWin.__storeScene.setView(view);
       }
-    } catch {
-      // Ignore if iframe not yet ready
-    }
+    } catch {}
   }, []);
+
+  const toggleAudio = useCallback(() => {
+    if (!audioRef.current) {
+      audioRef.current = new AmbientRainAudio();
+    }
+    if (isAudioActive) {
+      audioRef.current.stop();
+      setIsAudioActive(false);
+    } else {
+      audioRef.current.play();
+      setIsAudioActive(true);
+    }
+  }, [isAudioActive]);
+
+  // Keyboard shortcut listener
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      } else if (e.key === '1') {
+        handleSetView('default');
+      } else if (e.key === '2') {
+        handleSetView('detail');
+      } else if (e.key === '3') {
+        handleSetView('right');
+      } else if (e.key === '4') {
+        handleSetView('left');
+      } else if (e.key === 'r' || e.key === 'R' || e.key === '0') {
+        handleSetView('default');
+      } else if (e.key === 'm' || e.key === 'M') {
+        toggleAudio();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose, handleSetView, toggleAudio]);
+
+  // Reset and cleanup audio on modal lifecycle
+  useEffect(() => {
+    if (isOpen) {
+      setActiveView('default');
+      setIframeLoaded(false);
+    } else {
+      if (audioRef.current) {
+        audioRef.current.stop();
+        audioRef.current.dispose();
+        audioRef.current = null;
+      }
+      setIsAudioActive(false);
+    }
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.dispose();
+        audioRef.current = null;
+      }
+    };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -57,7 +177,7 @@ export const AmemachiModal: React.FC<AmemachiModalProps> = ({ isOpen, onClose })
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'rgba(3, 5, 8, 0.82)',
+        background: 'rgba(3, 5, 8, 0.85)',
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
         padding: '24px 16px',
@@ -68,14 +188,14 @@ export const AmemachiModal: React.FC<AmemachiModalProps> = ({ isOpen, onClose })
         onClick={(e) => e.stopPropagation()}
         style={{
           position: 'relative',
-          width: 'min(94vw, 1340px)',
-          height: 'min(88vh, 880px)',
+          width: 'min(95vw, 1360px)',
+          height: 'min(89vh, 890px)',
           display: 'flex',
           flexDirection: 'column',
-          background: 'linear-gradient(135deg, rgba(10, 16, 22, 0.92) 0%, rgba(6, 9, 13, 0.95) 100%)',
-          border: '1px solid rgba(110, 158, 174, 0.32)',
+          background: 'linear-gradient(135deg, rgba(10, 16, 22, 0.95) 0%, rgba(6, 9, 13, 0.98) 100%)',
+          border: '1px solid rgba(97, 215, 178, 0.35)',
           borderRadius: 16,
-          boxShadow: '0 32px 80px rgba(0, 0, 0, 0.85), 0 0 48px rgba(78, 126, 144, 0.18)',
+          boxShadow: '0 32px 80px rgba(0, 0, 0, 0.88), 0 0 48px rgba(97, 215, 178, 0.15)',
           overflow: 'hidden',
         }}
       >
@@ -87,9 +207,9 @@ export const AmemachiModal: React.FC<AmemachiModalProps> = ({ isOpen, onClose })
             justifyContent: 'space-between',
             flexWrap: 'wrap',
             gap: 12,
-            padding: '14px 22px',
+            padding: '12px 20px',
             borderBottom: '1px solid rgba(223, 231, 224, 0.1)',
-            background: 'rgba(5, 8, 12, 0.7)',
+            background: 'rgba(5, 8, 12, 0.75)',
             backdropFilter: 'blur(12px)',
           }}
         >
@@ -103,6 +223,7 @@ export const AmemachiModal: React.FC<AmemachiModalProps> = ({ isOpen, onClose })
                   borderRadius: '50%',
                   background: '#61d7b2',
                   boxShadow: '0 0 10px #61d7b2',
+                  animation: 'pulse 2s infinite',
                 }}
               />
               <span
@@ -129,51 +250,90 @@ export const AmemachiModal: React.FC<AmemachiModalProps> = ({ isOpen, onClose })
             </span>
           </div>
 
-          {/* Camera View Switcher */}
+          {/* Camera View Switcher with Keyboard Shortcut Badges */}
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 6,
+              gap: 5,
               background: 'rgba(255, 255, 255, 0.04)',
               padding: '3px 6px',
               borderRadius: 8,
               border: '1px solid rgba(223, 231, 224, 0.1)',
             }}
           >
-            <span style={{ fontSize: 10, color: 'rgba(223, 231, 224, 0.5)', marginRight: 4 }}>
+            <span style={{ fontSize: 10, color: 'rgba(223, 231, 224, 0.5)', marginRight: 2 }}>
               视角:
             </span>
             {[
-              { id: 'default', label: '街角全景' },
-              { id: 'detail', label: '便利店特写' },
-              { id: 'right', label: '侧翼车道' },
-              { id: 'left', label: '雨巷纵深' },
+              { id: 'default', key: '1', label: '街角全景' },
+              { id: 'detail', key: '2', label: '便利店特写' },
+              { id: 'right', key: '3', label: '侧翼车道' },
+              { id: 'left', key: '4', label: '雨巷纵深' },
             ].map((v) => (
               <button
                 key={v.id}
                 type="button"
                 onClick={() => handleSetView(v.id as any)}
                 style={{
-                  padding: '4px 10px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  padding: '4px 8px',
                   borderRadius: 6,
                   border: 'none',
                   fontSize: 11,
                   fontFamily: 'inherit',
                   fontWeight: activeView === v.id ? 600 : 400,
-                  background: activeView === v.id ? 'rgba(110, 158, 174, 0.3)' : 'transparent',
+                  background: activeView === v.id ? 'rgba(97, 215, 178, 0.22)' : 'transparent',
                   color: activeView === v.id ? '#61d7b2' : 'rgba(223, 231, 224, 0.7)',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
                 }}
               >
-                {v.label}
+                <span
+                  style={{
+                    fontSize: 9,
+                    padding: '1px 4px',
+                    borderRadius: 3,
+                    background: activeView === v.id ? 'rgba(97, 215, 178, 0.3)' : 'rgba(255, 255, 255, 0.08)',
+                    color: activeView === v.id ? '#61d7b2' : 'rgba(223, 231, 224, 0.5)',
+                  }}
+                >
+                  {v.key}
+                </span>
+                <span>{v.label}</span>
               </button>
             ))}
           </div>
 
-          {/* Actions: Open standalone & Close */}
+          {/* Actions: Audio Toggle + Open standalone + Close */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {/* Ambient Rain Sound Toggle */}
+            <button
+              type="button"
+              onClick={toggleAudio}
+              title="切换环境雨声 [M]"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 12px',
+                borderRadius: 6,
+                background: isAudioActive ? 'rgba(97, 215, 178, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                border: `1px solid ${isAudioActive ? '#61d7b2' : 'rgba(223, 231, 224, 0.15)'}`,
+                color: isAudioActive ? '#61d7b2' : 'rgba(223, 231, 224, 0.7)',
+                fontSize: 11,
+                fontFamily: 'inherit',
+                fontWeight: 500,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <span>{isAudioActive ? '🌧️ 氛围雨声: 开启' : '🌧️ 氛围雨声: 静音'}</span>
+              <span style={{ fontSize: 9, opacity: 0.6 }}>[M]</span>
+            </button>
+
             <a
               href="/amemachi.html"
               target="_blank"
@@ -182,7 +342,7 @@ export const AmemachiModal: React.FC<AmemachiModalProps> = ({ isOpen, onClose })
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
-                padding: '6px 14px',
+                padding: '6px 12px',
                 borderRadius: 6,
                 background: 'rgba(110, 158, 174, 0.15)',
                 border: '1px solid rgba(110, 158, 174, 0.35)',
@@ -238,7 +398,7 @@ export const AmemachiModal: React.FC<AmemachiModalProps> = ({ isOpen, onClose })
           </div>
         </div>
 
-        {/* 3D Canvas Iframe Container */}
+        {/* 3D Canvas Iframe Container (Perfect Color Match to Three.js #172738) */}
         <div
           style={{
             position: 'relative',
@@ -268,7 +428,7 @@ export const AmemachiModal: React.FC<AmemachiModalProps> = ({ isOpen, onClose })
                 style={{
                   width: 14,
                   height: 14,
-                  border: '2px solid rgba(110, 158, 174, 0.3)',
+                  border: '2px solid rgba(97, 215, 178, 0.3)',
                   borderTopColor: '#61d7b2',
                   borderRadius: '50%',
                   animation: 'spin 0.8s linear infinite',
@@ -288,6 +448,7 @@ export const AmemachiModal: React.FC<AmemachiModalProps> = ({ isOpen, onClose })
               height: '100%',
               border: 'none',
               display: 'block',
+              background: '#172738',
             }}
           />
         </div>
@@ -300,18 +461,19 @@ export const AmemachiModal: React.FC<AmemachiModalProps> = ({ isOpen, onClose })
             justifyContent: 'space-between',
             flexWrap: 'wrap',
             gap: 12,
-            padding: '10px 22px',
+            padding: '10px 20px',
             borderTop: '1px solid rgba(223, 231, 224, 0.08)',
-            background: 'rgba(5, 8, 12, 0.85)',
+            background: 'rgba(5, 8, 12, 0.88)',
             fontSize: 11,
-            color: 'rgba(223, 231, 224, 0.6)',
+            color: 'rgba(223, 231, 224, 0.65)',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-            <span>🖱️ 左键拖拽自由环绕</span>
+            <span>🖱️ 左键自由旋转</span>
             <span>📜 滚轮缩放景深</span>
-            <span>🖱️ 右键平移视角</span>
-            <span>⚡ 双击场景重置视角</span>
+            <span>🖱️ 右键平移</span>
+            <span>⚡ 双击或按 [R] 镜头复位</span>
+            <span>⌨️ 快捷键 [1-4] 切换视角</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

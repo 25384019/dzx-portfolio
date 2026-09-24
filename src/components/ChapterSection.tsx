@@ -542,6 +542,107 @@ export const ChapterSection: React.FC<ChapterSectionProps> = ({ onExploreXiaoZha
               ))}
             </div>
           </div>
+
+          {/* Spatial Audio-Visual Flagship Lab Card (03 / 03) */}
+          <div
+            style={{
+              background: 'linear-gradient(135deg, rgba(16, 12, 22, 0.85) 0%, rgba(6, 7, 12, 0.9) 100%)',
+              border: '1px solid rgba(242, 200, 208, 0.25)',
+              borderRadius: 16,
+              padding: '32px 40px',
+              backdropFilter: 'blur(24px)',
+              boxShadow: '0 24px 64px rgba(0, 0, 0, 0.8), 0 0 32px rgba(242, 200, 208, 0.08)',
+              position: 'relative',
+              overflow: 'hidden',
+              marginBottom: 24,
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16, marginBottom: 18 }}>
+              <div>
+                <span
+                  style={{
+                    display: 'inline-block',
+                    fontSize: 10,
+                    fontWeight: 600,
+                    letterSpacing: '0.2em',
+                    color: '#f2c8d0',
+                    textTransform: 'uppercase',
+                    marginBottom: 8,
+                  }}
+                >
+                  SPATIAL LAB · 03 / 03
+                </span>
+                <h3
+                  style={{
+                    fontSize: 'clamp(24px, 3.2vw, 36px)',
+                    fontWeight: 700,
+                    letterSpacing: '-0.01em',
+                    color: '#dfe7e0',
+                    margin: 0,
+                  }}
+                >
+                  <span translate="no">Synthesizing Future</span>
+                  <span style={{ fontSize: '0.55em', fontWeight: 400, color: '#f2c8d0', marginLeft: 12 }}>
+                    虚实音画中枢 · Audio-Visual Synthesis
+                  </span>
+                </h3>
+              </div>
+
+              {/* Status Badge */}
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '8px 18px',
+                  borderRadius: 999,
+                  background: 'rgba(242, 200, 208, 0.1)',
+                  border: '1px solid rgba(242, 200, 208, 0.3)',
+                  color: '#f2c8d0',
+                  fontSize: 10,
+                  fontWeight: 600,
+                  letterSpacing: '0.14em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#f2c8d0', boxShadow: '0 0 8px #f2c8d0' }} />
+                <span>IN ACTIVE SYNTHESIS</span>
+              </div>
+            </div>
+
+            <p
+              style={{
+                maxWidth: 680,
+                fontSize: 14,
+                lineHeight: 1.7,
+                color: 'rgba(223, 231, 224, 0.72)',
+                fontWeight: 300,
+                marginBottom: 20,
+              }}
+            >
+              Next frontier of spatial acoustic simulation and generative visual resonance. Unifying procedural soundscapes,
+              real-time GLSL frequency field shaders, and multimodal cognitive environments into an unbroken continuum.
+            </p>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {['WEB AUDIO API', 'GLSL FREQUENCY FIELDS', 'PROCEDURAL AMBIENCE', 'SPATIAL ACOUSTICS'].map((t) => (
+                <span
+                  key={t}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: 4,
+                    background: 'rgba(242, 200, 208, 0.08)',
+                    border: '1px solid rgba(242, 200, 208, 0.2)',
+                    fontSize: 9,
+                    letterSpacing: '0.12em',
+                    color: '#f2c8d0',
+                  }}
+                >
+                  {t}
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
